@@ -19,7 +19,7 @@ const myWitnessCfg =
                , nPubOut: 1       # public output = input + a*b*c = 1022 + 7*11*13 = 2023
                , nPubIn:  1       # public input  = 1022
                , nPrivIn: 3       # private inputs: 7, 11, 13
-               , nLabels: 0 
+               , nLabels: 0
                )
 
 # 2023 == 1022 + 7*3*11
@@ -44,10 +44,10 @@ const myR1CS =
       )
 
 # the equation we want prove is `7*11*13 + 1022 == 2023`
-let myWitnessValues : seq[Fr] = map( @[ 1, 2023, 1022, 7, 11, 13, 7*11, 7*11*13 ] , intToFr )
+let myWitnessValues = map( @[ 1, 2023, 1022, 7, 11, 13, 7*11, 7*11*13 ] , intToFr )
 # wire indices:         ^^^^^^^         0      1    2  3   4   5    6      7
 
-let myWitness = 
+let myWitness =
   Witness( curve:  "bn128"
          , r:      primeR
          , nvars:  8
@@ -56,7 +56,7 @@ let myWitness =
 
 #-------------------------------------------------------------------------------
 
-proc testProof(zkey: ZKey, witness: Witness): bool = 
+proc testProof(zkey: ZKey, witness: Witness): bool =
   let proof = generateProof( zkey, witness )
   let vkey  = extractVKey( zkey)
   let ok    = verifyProof( vkey, proof )
@@ -65,11 +65,11 @@ proc testProof(zkey: ZKey, witness: Witness): bool =
 suite "prover":
 
   test "prove & verify simple multiplication circuit, `JensGroth` flavour":
-    let zkey = createFakeCircuitSetup( myR1cs, flavour=JensGroth ) 
+    let zkey = createFakeCircuitSetup( myR1cs, flavour=JensGroth )
     check testProof( zkey, myWitness )
 
   test "prove & verify simple multiplication circuit, `Snarkjs` flavour":
-    let zkey = createFakeCircuitSetup( myR1cs, flavour=Snarkjs ) 
+    let zkey = createFakeCircuitSetup( myR1cs, flavour=Snarkjs )
     check testProof( zkey, myWitness )
 
 #-------------------------------------------------------------------------------

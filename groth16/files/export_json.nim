@@ -3,7 +3,7 @@
 # export proof and public input in `circom`-compatible JSON files
 #
 
-import constantine/math/arithmetic   except Fp, Fr
+import pkg/constantine/math/arithmetic   except Fp, Fr
 #import constantine/math/io/io_fields except Fp, Fr
 
 import groth16/bn128
@@ -11,29 +11,29 @@ from groth16/prover import Proof
 
 #-------------------------------------------------------------------------------
 
-func toQuotedDecimalFp(x: Fp): string = 
+func toQuotedDecimalFp(x: Fp): string =
   let s : string = toDecimalFp(x)
   return ("\"" & s & "\"")
 
-func toQuotedDecimalFr(x: Fr): string = 
+func toQuotedDecimalFr(x: Fr): string =
   let s : string = toDecimalFr(x)
   return ("\"" & s & "\"")
 
 #-------------------------------------------------------------------------------
 
 # exports the public input/output into as a JSON file
-proc exportPublicIO*( fpath: string, prf: Proof ) = 
+proc exportPublicIO*( fpath: string, prf: Proof ) =
 
   # debugPrintFrSeq("public IO",prf.publicIO)
 
-  let n : int = prf.publicIO.len 
+  let n : int = prf.publicIO.len
   assert( n > 0  )
   assert( bool(prf.publicIO[0] == oneFr) )
 
   let f = open(fpath, fmWrite)
   defer: f.close()
 
-  # note: we start from 1 because the 0th element is the constant 1 "variable", 
+  # note: we start from 1 because the 0th element is the constant 1 "variable",
   # which is automatically added by the tools
   for i in 1..<n:
     let str : string = toQuotedDecimalFr( prf.publicIO[i] )
@@ -67,7 +67,7 @@ proc writeG2( f: File, p: G2 ) =
 #-------------------------------------------------------------------------------
 
 # exports the proof into as a JSON file
-proc exportProof*( fpath: string, prf: Proof ) = 
+proc exportProof*( fpath: string, prf: Proof ) =
 
   let f = open(fpath, fmWrite)
   defer: f.close()
@@ -84,7 +84,7 @@ proc exportProof*( fpath: string, prf: Proof ) =
 #[
 #import std/sequtils
 
-func getFakeProof*() : Proof = 
+func getFakeProof*() : Proof =
   let pub : seq[Fr] = map( [1,101,102,103,117,119] , intToFr )
   let p = unsafeMkG1( intToFp(666) , intToFp(777) )
   let r = unsafeMkG1( intToFp(888) , intToFp(999) )
@@ -93,7 +93,7 @@ func getFakeProof*() : Proof =
   let q = unsafeMkG2( x , y )
   return Proof( publicIO:pub, pi_a:p, pi_b:q, pi_c:r )
 
-proc exportFakeProof*() = 
+proc exportFakeProof*() =
   let prf = getFakeProof()
   exportPublicIO( "fake_pub.json" , prf )
   exportProof(    "fake_prf.json" , prf )

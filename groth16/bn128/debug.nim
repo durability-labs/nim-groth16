@@ -9,23 +9,27 @@
 # equation: y^2 = x^3 + 3
 #
 
+import pkg/constantine/math/io/io_fields
+import pkg/constantine/named/properties_fields
+import pkg/constantine/math/extension_fields/towers
+
 import groth16/bn128/fields
 import groth16/bn128/curves
 import groth16/bn128/io
 
 #-------------------------------------------------------------------------------
 
-proc debugPrintFp*(prefix: string, x: Fp) =
+proc debugPrintFp*(prefix: string, x: Fp[BN254Snarks]) =
   echo(prefix & toDecimalFp(x))
 
-proc debugPrintFp2*(prefix: string, z: Fp2) =
+proc debugPrintFp2*(prefix: string, z: Fp2[BN254Snarks]) =
   echo(prefix & " 1 ~> " & toDecimalFp(z.coords[0]))
   echo(prefix & " u ~> " & toDecimalFp(z.coords[1]))
 
-proc debugPrintFr*(prefix: string, x: Fr) =
+proc debugPrintFr*(prefix: string, x: Fr[BN254Snarks]) =
   echo(prefix & toDecimalFr(x))
 
-proc debugPrintFrSeq*(msg: string, xs: seq[Fr]) =
+proc debugPrintFrSeq*(msg: string, xs: seq[Fr[BN254Snarks]]) =
   echo "---------------------"
   echo msg
   for x in xs:

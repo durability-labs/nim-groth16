@@ -3,9 +3,10 @@ import std/random
 
 # import constantine/platforms/abstractions
 
-import constantine/math/arithmetic       except Fp, Fp2, Fr
-import constantine/math/io/io_fields     except Fp, Fp2, Fr
-import constantine/math/io/io_bigints
+import pkg/constantine/math/arithmetic
+import pkg/constantine/math/io/io_fields
+import pkg/constantine/math/io/io_bigints
+import pkg/constantine/named/properties_fields
 
 import groth16/bn128/fields
 
@@ -59,9 +60,9 @@ proc randBig*[bits: static int](): BigInt[bits] =
 
   return d
 
-proc randFr*(): Fr =
+proc randFr*(): Fr[BN254Snarks] =
   let b : BigInt[254] = randBig[254]()
-  var y : Fr
+  var y : Fr[BN254Snarks]
   y.fromBig( b )
   return y
 

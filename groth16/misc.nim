@@ -3,8 +3,8 @@
 # miscellaneous routines
 #
 
-import strformat
-import times, os, strutils
+import std/strformat
+import std/[times, os, strutils]
 
 #-------------------------------------------------------------------------------
 
@@ -32,7 +32,7 @@ func delta*(i, j: int) : int =
 
 #-------------------------------------------------------------------------------
 
-func floorLog2* (x : int) : int = 
+func floorLog2* (x : int) : int =
   var k = -1
   var y = x
   while (y > 0):
@@ -40,7 +40,7 @@ func floorLog2* (x : int) : int =
     y = y shr 1
   return k
 
-func ceilingLog2* (x : int) : int = 
+func ceilingLog2* (x : int) : int =
   if (x==0):
     return -1
   else:

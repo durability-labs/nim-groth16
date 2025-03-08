@@ -1,7 +1,7 @@
 
 
 import std/[times,os]
-import strformat
+import std/strformat
 
 import groth16/prover
 import groth16/verifier
@@ -15,7 +15,7 @@ func seconds(x: float): string = fmt"{x:.4f} seconds"
 
 #-------------------------------------------------------------------------------
 
-proc testProveAndVerify*( zkey_fname, wtns_fname: string): (VKey,Proof) = 
+proc testProveAndVerify*( zkey_fname, wtns_fname: string): (VKey,Proof) =
 
   echo("parsing witness & zkey files...")
   let witness = parseWitness( wtns_fname)
@@ -36,7 +36,7 @@ proc testProveAndVerify*( zkey_fname, wtns_fname: string): (VKey,Proof) =
 
 #-------------------------------------------------------------------------------
 
-proc testFakeSetupAndVerify*( r1cs_fname, wtns_fname: string, flavour=Snarkjs): (VKey,Proof) = 
+proc testFakeSetupAndVerify*( r1cs_fname, wtns_fname: string, flavour=Snarkjs): (VKey,Proof) =
   echo("trusted setup flavour = ",flavour)
 
   echo("parsing witness & r1cs files...")
