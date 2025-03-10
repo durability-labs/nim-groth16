@@ -3,19 +3,23 @@
 # export proof and public input in `circom`-compatible JSON files
 #
 
-import pkg/constantine/math/arithmetic   except Fp, Fr
-#import constantine/math/io/io_fields except Fp, Fr
+import pkg/constantine/math/arithmetic
+import pkg/constantine/math/io/io_fields
+# import pkg/constantine/math/config/curves
+
+import pkg/constantine/named/properties_fields
+import pkg/constantine/math/extension_fields/towers
 
 import groth16/bn128
 from groth16/prover import Proof
 
 #-------------------------------------------------------------------------------
 
-func toQuotedDecimalFp(x: Fp): string =
+func toQuotedDecimalFp(x: Fp[BN254Snarks]): string =
   let s : string = toDecimalFp(x)
   return ("\"" & s & "\"")
 
-func toQuotedDecimalFr(x: Fr): string =
+func toQuotedDecimalFr(x: Fr[BN254Snarks]): string =
   let s : string = toDecimalFr(x)
   return ("\"" & s & "\"")
 
@@ -24,7 +28,7 @@ func toQuotedDecimalFr(x: Fr): string =
 # exports the public input/output into as a JSON file
 proc exportPublicIO*( fpath: string, prf: Proof ) =
 
-  # debugPrintFrSeq("public IO",prf.publicIO)
+  debugPrintFrSeq("public IO",prf.publicIO)
 
   let n : int = prf.publicIO.len
   assert( n > 0  )

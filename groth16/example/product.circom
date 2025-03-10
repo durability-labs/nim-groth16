@@ -30,7 +30,7 @@ template Main(n) {
   component prod = Product(n);
   inp ==> prod.inp;
   out <== prod.out + plus;
-  log("out =",out);
+  // log("out =",out);
 
   out === 2023;
 }
