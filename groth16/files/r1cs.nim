@@ -4,7 +4,7 @@
 #
 # file format
 # ===========
-# 
+#
 # standard iden3 binary container format.
 # field elements are in standard representation
 #
@@ -33,7 +33,7 @@
 #   where a term looks like this:
 #     idx   : word32      = which witness variable
 #     coeff : Fr          = the coefficient
-#     
+#
 # 3: Wire-to-label mapping
 # ------------------------
 #   <an array of `nWires` many 64 bit words>
@@ -49,31 +49,36 @@
 #   ...
 #
 
-import std/streams
+{.push raises: [IOError, OSError].}
 
-import constantine/math/arithmetic except Fp, Fr
-import constantine/math/io/io_bigints
+import std/streams
+import std/sugar
+
+import pkg/constantine/math/arithmetic except Fp, Fr
+import pkg/constantine/math/io/io_bigints
+import pkg/constantine/named/properties_fields
+import pkg/constantine/math/extension_fields/towers
 
 import groth16/bn128
 import groth16/files/container
 
 #-------------------------------------------------------------------------------
 
-type 
- 
+type
+
   WitnessConfig* = object
     nWires*  : int           # total number of wires (or witness variables), including the constant 1 "variable"
     nPubOut* : int           # number of public outputs
     nPubIn*  : int           # number of public inputs
     nPrivIn* : int           # number of private inputs
     nLabels* : int           # number of labels
-  
-  Term*       = tuple[ wireIdx: int, value: Fr ]
+
+  Term*       = tuple[ wireIdx: int, value: Fr[BN254_Snarks] ]
   LinComb*    = seq[Term]
   Constraint* = tuple[ A: LinComb, B: LinComb, C: LinComb ]
 
   R1CS* = object
-    r*           : BigInt[256] 
+    r*           : BigInt[256]
     cfg*         : WitnessConfig
     nConstr*     : int
     constraints* : seq[Constraint]
@@ -83,7 +88,7 @@ type
 
 proc parseSection1_header( stream: Stream, user: var R1CS, sectionLen: int ) =
   # echo "\nparsing r1cs header"
-  
+
   let (n8r, r) = parsePrimeField( stream )     # size of the scalar field
   user.r = r;
 
@@ -110,19 +115,19 @@ proc parseSection1_header( stream: Stream, user: var R1CS, sectionLen: int ) =
 
 #-------------------------------------------------------------------------------
 
-proc loadTerm( stream: Stream ): Term = 
+proc loadTerm( stream: Stream ): Term =
   let idx   = int( stream.readUint32() )
   let coeff = loadValueFrStd( stream )
   return (wireIdx:idx, value:coeff)
 
-proc loadLinComb( stream: Stream ): LinComb = 
+proc loadLinComb( stream: Stream ): LinComb =
   let nterms = int( stream.readUint32() )
   var terms : seq[Term]
   for i in 1..nterms:
     terms.add( loadTerm(stream) )
   return terms
 
-proc loadConstraint( stream: Stream ): Constraint = 
+proc loadConstraint( stream: Stream ): Constraint =
   let a = loadLinComb( stream )
   let b = loadLinComb( stream )
   let c = loadLinComb( stream )
@@ -160,17 +165,17 @@ proc r1csCallback( stream:  Stream
                  , sectId:  int
                  , sectLen: int
                  , user:    var R1CS
-                 ) = 
+                 ) =
   case sectId
     of 1: parseSection1_header(      stream, user, sectLen )
     of 2: parseSection2_constraints( stream, user, sectLen )
     of 3: parseSection3_wireToLabel( stream, user, sectLen )
     else: discard
 
-proc parseR1CS* (fname: string): R1CS = 
+proc parseR1CS* (fname: string): R1CS =
   var r1cs : R1CS
-  parseContainer( "r1cs", 1, fname, r1cs, r1csCallback, proc (id: int): bool = id == 1 )
-  parseContainer( "r1cs", 1, fname, r1cs, r1csCallback, proc (id: int): bool = id != 1 )
+  parseContainer( "r1cs", 1, fname, r1cs, r1csCallback, (id) {.raises: [], gcsafe.} => id == 1 )
+  parseContainer( "r1cs", 1, fname, r1cs, r1csCallback, (id) {.raises: [], gcsafe.} => id != 1 )
   return r1cs
 
 #-------------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-
 #
 # the prime fields Fp and Fr with sizes
 #
@@ -6,30 +5,31 @@
 #   r = 21888242871839275222246405745257275088548364400416034343698204186575808495617
 #
 
-import sugar
+import std/sugar
 
 import std/bitops
 import std/sequtils
 
-import constantine/math/arithmetic
-import constantine/math/io/io_fields
-import constantine/math/io/io_bigints
-import constantine/math/config/curves
-import constantine/math/config/type_ff          as tff
-import constantine/math/extension_fields/towers as ext
+import pkg/constantine/math/arithmetic
+import pkg/constantine/math/io/io_fields
+# import pkg/constantine/math/io/io_extfields
+import pkg/constantine/math/io/io_bigints
+# import pkg/constantine/math/config/curves
+import pkg/constantine/named/properties_fields
+import pkg/constantine/math/extension_fields/towers as ext
 
 #-------------------------------------------------------------------------------
 
 type B*    = BigInt[256]
-type Fr*   = tff.Fr[BN254Snarks]
-type Fp*   = tff.Fp[BN254Snarks]
+# type Fr*   = tff.Fr[BN254_Snarks]
+# type Fp*   = tff.Fp[BN254_Snarks]
 
-type Fp2*  = ext.QuadraticExt[Fp]
-type Fp12* = ext.Fp12[BN254Snarks]
+# type Fp2*  = ext.QuadraticExt[Fp]
+# type Fp12* = ext.Fp12[BN254_Snarks]
 
-func mkFp2* (i: Fp, u: Fp) : Fp2 =
-  let c : array[2, Fp] = [i,u]
-  return ext.QuadraticExt[Fp]( coords: c )
+func mkFp2* (i: Fp[BN254_Snarks], u: Fp[BN254_Snarks]) : Fp2[BN254_Snarks] =
+  let c : array[2, Fp[BN254_Snarks]] = [i,u]
+  return ext.QuadraticExt[Fp[BN254_Snarks]]( coords: c )
 
 #-------------------------------------------------------------------------------
 
@@ -38,16 +38,16 @@ const primeR* : B = fromHex( B, "0x30644e72e131a029b85045b68181585d2833e84879b97
 
 #-------------------------------------------------------------------------------
 
-const zeroFp*  : Fp = fromHex( Fp, "0x00" )
-const zeroFr*  : Fr = fromHex( Fr, "0x00" )
-const oneFp*   : Fp = fromHex( Fp, "0x01" )
-const oneFr*   : Fr = fromHex( Fr, "0x01" )
+const zeroFp*   = fromHex( Fp[BN254_Snarks], "0x00" )
+const zeroFr*   = fromHex( Fr[BN254_Snarks], "0x00" )
+const oneFp*    = fromHex( Fp[BN254_Snarks], "0x01" )
+const oneFr*    = fromHex( Fr[BN254_Snarks], "0x01" )
 
-const zeroFp2* : Fp2 = mkFp2( zeroFp, zeroFp )
-const oneFp2*  : Fp2 = mkFp2( oneFp , zeroFp )
+const zeroFp2* = mkFp2( zeroFp, zeroFp )
+const oneFp2*  = mkFp2( oneFp , zeroFp )
 
-const minusOneFp* : Fp = fromHex( Fp, "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46" )
-const minusOneFr* : Fr = fromHex( Fr, "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000" )
+const minusOneFp* = fromHex( Fp[BN254_Snarks], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46" )
+const minusOneFr* = fromHex( Fr[BN254_Snarks], "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000" )
 
 #-------------------------------------------------------------------------------
 
@@ -56,13 +56,13 @@ func intToB*(a: uint): B =
   y.setUint(a)
   return y
 
-func intToFp*(a: int): Fp =
-  var y : Fp
+func intToFp*(a: int): Fp[BN254_Snarks] =
+  var y : Fp[BN254_Snarks]
   y.fromInt(a)
   return y
 
-func intToFr*(a: int): Fr =
-  var y : Fr
+func intToFr*(a: int): Fr[BN254_Snarks] =
+  var y : Fr[BN254_Snarks]
   y.fromInt(a)
   return y
 
@@ -154,27 +154,27 @@ func smallPowFr*(base: Fr, expo: int): Fr =
 
 #-------------------------------------------------------------------------------
 
-func deltaFr*(i, j: int) : Fr =
+func deltaFr*[T](i, j: int) : Fr[T] =
   return (if (i == j): oneFr else: zeroFr)
 
 #-------------------------------------------------------------------------------
 
 # Montgomery batch inversion
-func batchInverseFr*( xs: seq[Fr] ) : seq[Fr] =
+func batchInverseFr*( xs: seq[Fr[BN254_Snarks]] ) : seq[Fr[BN254_Snarks]] =
   let n = xs.len
   assert(n>0)
-  var us : seq[Fr] = newSeq[Fr](n+1)
+  var us : seq[Fr[BN254_Snarks]] = newSeq[Fr[BN254_Snarks]](n+1)
   var a = xs[0]
   us[0] = oneFr
   us[1] = a
   for i in 1..<n: ( a *= xs[i] ; us[i+1] = a )
-  var vs : seq[Fr] = newSeq[Fr](n)
+  var vs : seq[Fr[BN254_Snarks]] = newSeq[Fr[BN254_Snarks]](n)
   vs[n-1] = invFr( us[n] )
   for i in countdown(n-2,0): vs[i] = vs[i+1] * xs[i+1]
   return collect( newSeq, (for i in 0..<n: us[i]*vs[i] ) )
 
 proc sanityCheckBatchInverseFr*() =
-  let xs : seq[Fr] = map( toSeq(101..137) , intToFr )
+  let xs = map( toSeq(101..137) , intToFr )
   let ys = batchInverseFr( xs )
   let zs = collect( newSeq, (for x in xs: invFr(x)) )
   let n = xs.len
@@ -183,7 +183,7 @@ proc sanityCheckBatchInverseFr*() =
     if not bool(ys[i] == zs[i]):
       echo "batch inverse test FAILED!"
       return
-  echo "batch iverse test OK."
+  echo "batch inverse test OK."
 
 #-------------------------------------------------------------------------------
 

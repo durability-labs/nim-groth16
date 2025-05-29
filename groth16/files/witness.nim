@@ -16,26 +16,29 @@
 
 import std/streams
 
-import constantine/math/arithmetic except Fp, Fr
-import constantine/math/io/io_bigints
+import pkg/constantine/math/arithmetic
+import pkg/constantine/math/io/io_fields
+import pkg/constantine/math/io/io_bigints
+import pkg/constantine/named/properties_fields
+import pkg/constantine/math/extension_fields/towers
 
 import groth16/bn128
 import groth16/files/container
 
 #-------------------------------------------------------------------------------
 
-type 
+type
   Witness* = object
     curve*  : string
-    r*      : BigInt[256] 
+    r*      : BigInt[256]
     nvars*  : int
-    values* : seq[Fr]
+    values* : seq[Fr[BN254_Snarks]]
 
 #-------------------------------------------------------------------------------
 
 proc parseSection1_header( stream: Stream, user: var Witness, sectionLen: int ) =
   # echo "\nparsing witness header"
-  
+
   let (n8r, r) = parsePrimeField( stream )     # size of the scalar field
   user.r = r;
 
@@ -61,14 +64,14 @@ proc parseSection2_witness( stream: Stream, user: var Witness, sectionLen: int )
 
 #-------------------------------------------------------------------------------
 
-proc wtnsCallback(stream: Stream, sectId: int, sectLen: int, user: var Witness) = 
+proc wtnsCallback(stream: Stream, sectId: int, sectLen: int, user: var Witness) =
   #echo(sectId)
   case sectId
     of 1: parseSection1_header(  stream, user, sectLen )
     of 2: parseSection2_witness( stream, user, sectLen )
     else: discard
 
-proc parseWitness* (fname: string): Witness = 
+proc parseWitness* (fname: string): Witness =
   var wtns : Witness
   parseContainer( "wtns", 2, fname, wtns, wtnsCallback, proc (id: int): bool = id == 1 )
   parseContainer( "wtns", 2, fname, wtns, wtnsCallback, proc (id: int): bool = id != 1 )

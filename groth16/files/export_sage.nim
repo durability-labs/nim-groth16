@@ -6,7 +6,7 @@
 import std/strutils
 import std/streams
 
-import constantine/math/arithmetic   except Fp, Fr
+import pkg/constantine/math/arithmetic   except Fp, Fr
 
 import groth16/bn128
 import groth16/zkey_types
@@ -19,52 +19,52 @@ func toSpaces(str: string): string = spaces(str.len)
 func sageFp*(prefix: string, x: Fp): string = prefix & "Fp(" & toDecimalFp(x) & ")"
 func sageFr*(prefix: string, x: Fr): string = prefix & "Fr(" & toDecimalFr(x) & ")"
 
-func sageFp2*(prefix: string, z: Fp2): string = 
-  sageFp( prefix           & "mkFp2(" , z.coords[0]) & ",\n" & 
+func sageFp2*(prefix: string, z: Fp2): string =
+  sageFp( prefix           & "mkFp2(" , z.coords[0]) & ",\n" &
   sageFp( toSpaces(prefix) & "      " , z.coords[1]) & ")"
 
-func sageG1*(prefix: string, p: G1): string = 
-  sageFp( prefix           & "E(" , p.x) & ",\n" & 
+func sageG1*(prefix: string, p: G1): string =
+  sageFp( prefix           & "E(" , p.x) & ",\n" &
   sageFp( toSpaces(prefix) & "  " , p.y) & ")"
 
 func sageG2*(prefix: string, p: G2): string =
-  sageFp2( prefix           & "E2(" , p.x) & ",\n" & 
+  sageFp2( prefix           & "E2(" , p.x) & ",\n" &
   sageFp2( toSpaces(prefix) & "   " , p.y) & ")"
 
 #-------------------------------------------------------------------------------
 
-proc exportVKey*(h: Stream, vkey: VKey ) = 
+proc exportVKey*(h: Stream, vkey: VKey ) =
   let spec = vkey.spec
   h.writeLine("alpha1 = \\") ; h.writeLine(sageG1("  ", spec.alpha1))
   h.writeLine("beta2  = \\") ; h.writeLine(sageG2("  ", spec.beta2 ))
   h.writeLine("gamma2 = \\") ; h.writeLine(sageG2("  ", spec.gamma2))
   h.writeLine("delta2 = \\") ; h.writeLine(sageG2("  ", spec.delta2))
 
-  let pts = vkey.vpoints.pointsIC 
+  let pts = vkey.vpoints.pointsIC
   h.writeLine("pointsIC = \\")
   for i in 0..<pts.len:
     let prefix  = if (i==0):        "  [ " else: "    "
-    let postfix = if (i<pts.len-1): ","    else: " ]" 
+    let postfix = if (i<pts.len-1): ","    else: " ]"
     h.writeLine( sageG1(prefix, pts[i]) & postfix )
 
 #---------------------------------------
 
-proc exportProof*(h: Stream, prf: Proof ) = 
+proc exportProof*(h: Stream, prf: Proof ) =
   h.writeLine("piA = \\") ; h.writeLine(sageG1("  ", prf.pi_a ))
   h.writeLine("piB = \\") ; h.writeLine(sageG2("  ", prf.pi_b ))
   h.writeLine("piC = \\") ; h.writeLine(sageG1("  ", prf.pi_c ))
- 
+
   # note: the first element is just the constant 1
   let coeffs = prf.publicIO
   h.writeLine("pubIO = \\")
   for i in 0..<coeffs.len:
     let prefix  = if (i==0):           "  [ " else: "    "
-    let postfix = if (i<coeffs.len-1): ","    else: " ]" 
+    let postfix = if (i<coeffs.len-1): ","    else: " ]"
     h.writeLine( prefix & toDecimalFr(coeffs[i]) & postfix )
 
 #-------------------------------------------------------------------------------
 
-const sage_bn128_lines : seq[string] = 
+const sage_bn128_lines : seq[string] =
   @[ "# BN128 elliptic curve"
   , "p  = 21888242871839275222246405745257275088696311157297823662689037894645226208583"
   , "r  = 21888242871839275222246405745257275088548364400416034343698204186575808495617"
@@ -121,7 +121,7 @@ const sage_bn128* : string = join(sage_bn128_lines, sep="\n")
 
 #-------------------------------------------------------------------------------
 
-const verify_lines : seq[string] = 
+const verify_lines : seq[string] =
   @[ "pubG1 = pointsIC[0]"
   , "for i in [1..len(pubIO)-1]:"
   , "  pubG1 = pubG1 + pubIO[i]*pointsIC[i]"
@@ -138,7 +138,7 @@ const verify_script : string = join(verify_lines, sep="\n")
 
 #-------------------------------------------------------------------------------
 
-proc exportSage*(fpath: string, vkey: VKey, prf: Proof) = 
+proc exportSage*(fpath: string, vkey: VKey, prf: Proof) =
 
   let h = openFileStream(fpath, fmWrite)
   defer: h.close()

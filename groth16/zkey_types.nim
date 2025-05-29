@@ -1,12 +1,16 @@
 
-import constantine/math/arithmetic except Fp, Fr
+import pkg/constantine/math/arithmetic
+import pkg/constantine/math/io/io_fields
+import pkg/constantine/math/io/io_bigints
+import pkg/constantine/named/properties_fields
+import pkg/constantine/math/extension_fields/towers
 
 import groth16/bn128
 
 #-------------------------------------------------------------------------------
 
-type 
- 
+type
+
   Flavour* = enum
     JensGroth          # the version described in the original Groth16 paper
     Snarkjs            # the version implemented by Snarkjs
@@ -27,8 +31,8 @@ type
     beta2*       : G2                # = beta  * g2
     gamma2*      : G2                # = gamma * g2
     delta1*      : G1                # = delta * g1
-    delta2*      : G2                # = delta * g2       
-    alphaBeta*   : Fp12              # = <alpha1 , beta2>
+    delta2*      : G2                # = delta * g2
+    alphaBeta*   : Fp12[BN254_Snarks] # = <alpha1 , beta2>
 
   VerifierPoints* = object
     pointsIC*    : seq[G1]           # the points `delta^-1 * ( beta*A_j(tau) + alpha*B_j(tau) + C_j(tau) ) * g1` (for j <= npub)
@@ -49,7 +53,7 @@ type
     matrix* : MatrixSel
     row*    : int
     col*    : int
-    coeff*  : Fr
+    coeff*  : Fr[BN254_Snarks]
 
   ZKey* = object
     # sectionMask* : uint32
@@ -59,14 +63,14 @@ type
     pPoints*     : ProverPoints
     coeffs*      : seq[Coeff]
 
-  VKey* = object 
+  VKey* = object
     curve*   : string
     spec*    : SpecPoints
     vpoints* : VerifierPoints
 
 #-------------------------------------------------------------------------------
 
-func extractVKey*(zkey: Zkey): VKey = 
+func extractVKey*(zkey: ZKey): VKey =
   let curve = zkey.header.curve
   let spec  = zkey.specPoints
   let vpts  = zkey.vPoints
@@ -74,32 +78,32 @@ func extractVKey*(zkey: Zkey): VKey =
 
 #-------------------------------------------------------------------------------
 
-proc printGrothHeader*(hdr: GrothHeader) = 
-  echo("curve        = " & ($hdr.curve        ) ) 
-  echo("flavour      = " & ($hdr.flavour      ) ) 
-  echo("|Fp|         = " & (toDecimalBig(hdr.p)) ) 
-  echo("|Fr|         = " & (toDecimalBig(hdr.r)) ) 
-  echo("nvars        = " & ($hdr.nvars        ) ) 
-  echo("npubs        = " & ($hdr.npubs        ) ) 
-  echo("domainSize   = " & ($hdr.domainSize   ) ) 
-  echo("logDomainSize= " & ($hdr.logDomainSize) ) 
+proc printGrothHeader*(hdr: GrothHeader) =
+  echo("curve        = " & ($hdr.curve        ) )
+  echo("flavour      = " & ($hdr.flavour      ) )
+  echo("|Fp|         = " & (toDecimalBig(hdr.p)) )
+  echo("|Fr|         = " & (toDecimalBig(hdr.r)) )
+  echo("nvars        = " & ($hdr.nvars        ) )
+  echo("npubs        = " & ($hdr.npubs        ) )
+  echo("domainSize   = " & ($hdr.domainSize   ) )
+  echo("logDomainSize= " & ($hdr.logDomainSize) )
 
 #-------------------------------------------------------------------------------
 
-func matrixSelToString(sel: MatrixSel): string = 
-  case sel 
+func matrixSelToString(sel: MatrixSel): string =
+  case sel
     of MatrixA: return "A"
     of MatrixB: return "B"
     of MatrixC: return "C"
 
-proc debugPrintCoeff(cf: Coeff) = 
+proc debugPrintCoeff(cf: Coeff) =
   echo(    "matrix=", matrixSelToString(cf.matrix)
       , " | i=", cf.row
       , " | j=", cf.col
       , " | val=", signedToDecimalFr(cf.coeff)
       )
 
-proc debugPrintCoeffs*(cfs: seq[Coeff]) = 
+proc debugPrintCoeffs*(cfs: seq[Coeff]) =
   for cf in cfs: debugPrintCoeff(cf)
 
 #-------------------------------------------------------------------------------

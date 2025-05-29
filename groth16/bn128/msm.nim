@@ -1,38 +1,38 @@
 
 #
 # Multi-Scalar Multiplication (MSM)
-# 
+#
 
 import system
 import std/cpuinfo
-import taskpools
+import std/times
+
+import pkg/taskpools
 
 # import constantine/curves_primitives except Fp, Fp2, Fr
- 
-import constantine/platforms/abstractions   except Subgroup
-import constantine/math/isogenies/frobenius except Subgroup
 
-import constantine/math/arithmetic     except Fp, Fp2, Fr
-import constantine/math/io/io_fields   except Fp, Fp2, Fr
-import constantine/math/io/io_bigints
-import constantine/math/config/curves  except G1, G2, Subgroup
-import constantine/math/config/type_ff except Fp, Fr, Subgroup
+import pkg/constantine/platforms/abstractions   except Subgroup
+import pkg/constantine/math/endomorphisms/frobenius except Subgroup
 
-import constantine/math/extension_fields/towers                 as ext except Fp, Fp2, Fp12, Fr
-import constantine/math/elliptic/ec_shortweierstrass_affine     as aff except Subgroup
-import constantine/math/elliptic/ec_shortweierstrass_projective as prj except Subgroup
-import constantine/math/elliptic/ec_scalar_mul_vartime          as scl except Subgroup
-import constantine/math/elliptic/ec_multi_scalar_mul            as msm except Subgroup
+import pkg/constantine/named/algebras
+import pkg/constantine/math/arithmetic
+import pkg/constantine/math/io/io_fields
+import pkg/constantine/math/io/io_bigints
+
+import pkg/constantine/math/extension_fields/towers                 as ext
+import pkg/constantine/math/elliptic/ec_shortweierstrass_affine     as aff except Subgroup
+import pkg/constantine/math/elliptic/ec_shortweierstrass_projective as prj except Subgroup
+import pkg/constantine/math/elliptic/ec_scalar_mul_vartime          as scl except Subgroup
+import pkg/constantine/math/elliptic/ec_multi_scalar_mul            as msm except Subgroup
 
 import groth16/bn128/fields
 import groth16/bn128/curves as mycurves
 
 import groth16/misc    # TEMP DEBUGGING
-import std/times
 
 #-------------------------------------------------------------------------------
 
-proc msmConstantineG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
+proc msmConstantineG1*( coeffs: openArray[Fr[BN254_Snarks]] , points: openArray[G1] ): G1 =
 
   # let start = cpuTime()
 
@@ -60,7 +60,7 @@ proc msmConstantineG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
 
 #---------------------------------------
 
-func msmConstantineG2*( coeffs: openArray[Fr] , points: openArray[G2] ): G2 =
+func msmConstantineG2*( coeffs: openArray[Fr[BN254_Snarks]] , points: openArray[G2] ): G2 =
 
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
@@ -86,21 +86,20 @@ func msmConstantineG2*( coeffs: openArray[Fr] , points: openArray[G2] ): G2 =
 
 const task_multiplier : int = 1
 
-proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G1] ): G1 =
+proc msmMultiThreadedG1*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G1], pool: Taskpool ): G1 =
 
   # for N <= 255 , we use 1 thread
   # for N == 256 , we use 2 threads
-  # for N == 512 , we use 4 threads 
-  # for N >= 1024, we use 8+ threads 
+  # for N == 512 , we use 4 threads
+  # for N >= 1024, we use 8+ threads
 
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
-  let nthreads_target = if (nthreads_hint<=0): countProcessors() else: min( nthreads_hint, 256 )
+  let nthreads_target = min( pool.numThreads, 256 )
   let nthreads = max( 1 , min( N div 128 , nthreads_target ) )
-  let ntasks   = if nthreads>1: (nthreads*task_multiplier) else: 1
+  let ntasks   = if nthreads>1: ( nthreads * task_multiplier ) else: 1
 
-  var pool = Taskpool.new(num_threads = nthreads)
-  var pending : seq[FlowVar[mycurves.G1]] = newSeq[FlowVar[mycurves.G1]](ntasks)
+  var pending : seq[Flowvar[mycurves.G1]] = newSeq[Flowvar[mycurves.G1]](ntasks)
 
   var a : int = 0
   var b : int
@@ -118,23 +117,19 @@ proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G1] 
   for k in 0..<ntasks:
     res += sync pending[k]
 
-  pool.syncAll()    
-  pool.shutdown()
-
   return res
 
 #---------------------------------------
 
-proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G2] ): G2 =
+proc msmMultiThreadedG2*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G2], pool: Taskpool ): G2 =
 
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
-  let nthreads_target = if (nthreads_hint<=0): countProcessors() else: min( nthreads_hint, 256 )
+  let nthreads_target = min( pool.numThreads, 256 )
   let nthreads = max( 1 , min( N div 128 , nthreads_target ) )
   let ntasks   = if nthreads>1: (nthreads*task_multiplier) else: 1
 
-  var pool = Taskpool.new(num_threads = nthreads)
-  var pending : seq[FlowVar[mycurves.G2]] = newSeq[FlowVar[mycurves.G2]](ntasks)
+  var pending : seq[Flowvar[mycurves.G2]] = newSeq[Flowvar[mycurves.G2]](ntasks)
 
   var a : int = 0
   var b : int
@@ -152,19 +147,16 @@ proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G2] 
   for k in 0..<ntasks:
     res += sync pending[k]
 
-  pool.syncAll()    
-  pool.shutdown()
-
   return res
 
 #-------------------------------------------------------------------------------
 
-func msmNaiveG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
+func msmNaiveG1*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G1] ): G1 =
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
 
   var s : ProjG1
-  s.setInf()
+  s.setNeutral()
 
   for i in 0..<N:
     var t : ProjG1
@@ -179,12 +171,12 @@ func msmNaiveG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
 
 #---------------------------------------
 
-func msmNaiveG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 =
+func msmNaiveG2*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G2] ): G2 =
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
 
   var s : ProjG2
-  s.setInf()
+  s.setNeutral()
 
   for i in 0..<N:
     var t : ProjG2
@@ -199,8 +191,8 @@ func msmNaiveG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 =
 
 #-------------------------------------------------------------------------------
 
-proc msmG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 = msmConstantineG1(coeffs, points)
-proc msmG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 = msmConstantineG2(coeffs, points)
+proc msmG1*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G1] ): G1 = msmConstantineG1(coeffs, points)
+proc msmG2*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G2] ): G2 = msmConstantineG2(coeffs, points)
 
 #-------------------------------------------------------------------------------
 

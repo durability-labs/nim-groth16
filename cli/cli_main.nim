@@ -1,5 +1,5 @@
 
-import sugar
+import std/sugar
 import std/strutils
 import std/sequtils
 import std/os
@@ -36,10 +36,10 @@ proc printHelp() =
   echo " -u, --setup                     : perform (fake) trusted setup"
   echo " -n, --nomask                    : don't use random masking for full ZK"
   echo " -z, --zkey   = <circuit.zkey>   : the `.zkey` file"
-  echo " -w, --wtns   = <circuit.wtns>   : the `.wtns` file" 
-  echo " -r, --r1cs   = <circuit.r1cs>   : the `.r1cs` file" 
+  echo " -w, --wtns   = <circuit.wtns>   : the `.wtns` file"
+  echo " -r, --r1cs   = <circuit.r1cs>   : the `.r1cs` file"
   echo " -o, --output = <proof.json>     : the proof file"
-  echo " -i, --io     = <public.json>    : the public input/output file" 
+  echo " -i, --io     = <public.json>    : the public input/output file"
 
 #-------------------------------------------------------------------------------
 
@@ -58,7 +58,7 @@ type Config = object
   no_masking:   bool
   nthreads:     int
 
-const dummyConfig = 
+const dummyConfig =
   Config( zkey_file:    ""
         , r1cs_file:    ""
         , wtns_file:    ""
@@ -123,13 +123,13 @@ proc parseCliOptions(): Config =
         quit()
 
     of cmdEnd:
-      discard  
+      discard
 
   if swCtr==0 and argCtr==0:
     printHelp()
     quit()
 
-  if cfg.nthreads <= 0: 
+  if cfg.nthreads <= 0:
     cfg.nthreads = countProcessors()
 
   return cfg
@@ -137,7 +137,7 @@ proc parseCliOptions(): Config =
 #-------------------------------------------------------------------------------
 
 #[
-proc testProveAndVerify*( zkey_fname, wtns_fname: string): (VKey,Proof) = 
+proc testProveAndVerify*( zkey_fname, wtns_fname: string): (VKey,Proof) =
 
   echo("parsing witness & zkey files...")
   let witness = parseWitness( wtns_fname)
@@ -170,20 +170,20 @@ proc cliMain(cfg: Config) =
     echo("\nparsing witness file " & quoted(cfg.wtns_file))
     withMeasureTime(cfg.measure_time,"parsing the witness"):
       wtns = parseWitness(cfg.wtns_file)
-  
+
   if not (cfg.zkey_file == ""):
     echo("\nparsing zkey file " & quoted(cfg.zkey_file))
     withMeasureTime(cfg.measure_time,"parsing the zkey"):
       zkey = parseZKey(cfg.zkey_file)
-  
+
   if not (cfg.r1cs_file == ""):
     echo("\nparsing r1cs file " & quoted(cfg.r1cs_file))
     withMeasureTime(cfg.measure_time,"parsing the r1cs"):
       r1cs = parseR1CS(cfg.r1cs_file)
-  
+
   if cfg.do_setup:
     if not (cfg.zkey_file == ""):
-      echo("\nwe are doing a fake trusted setup, don't specify the zkey file!")   
+      echo("\nwe are doing a fake trusted setup, don't specify the zkey file!")
       quit()
     if (cfg.r1cs_file == ""):
       echo("\nerror: r1cs file is required for the fake setup!")
@@ -191,24 +191,24 @@ proc cliMain(cfg: Config) =
     echo("\nperforming fake trusted setup...")
     withMeasureTime(cfg.measure_time,"fake setup"):
       zkey = createFakeCircuitSetup( r1cs, flavour=Snarkjs )
-  
+
   if cfg.debug:
     printGrothHeader(zkey.header)
     # debugPrintCoeffs(zkey.coeffs)
 
   if cfg.do_prove:
     if (cfg.wtns_file=="") or (cfg.zkey_file=="" and cfg.do_setup==false):
-      echo("cannot prove: missing witness and/or zkey file!")      
+      echo("cannot prove: missing witness and/or zkey file!")
       quit()
     else:
       echo("generating proof...")
       let print_timings = cfg.measure_time and cfg.verbose
       withMeasureTime(cfg.measure_time,"proving"):
         if cfg.no_masking:
-          proof = generateProofWithTrivialMask(cfg.nthreads, print_timings, zkey, wtns)
+          proof = generateProofWithTrivialMask(zkey, wtns, cfg.nthreads, print_timings)
         else:
-          proof = generateProof(cfg.nthreads, print_timings, zkey, wtns)
-    
+          proof = generateProof(zkey, wtns, cfg.nthreads, print_timings)
+
       if not (cfg.output_file == ""):
         echo("exporting the proof to " & quoted(cfg.output_file))
         exportProof( cfg.output_file, proof )
@@ -218,7 +218,7 @@ proc cliMain(cfg: Config) =
 
   if cfg.do_verify:
     if (cfg.zkey_file == "" and cfg.do_setup==false):
-      echo("cannot verify: missing vkey (well, zkey)")      
+      echo("cannot verify: missing vkey (well, zkey)")
       quit()
     else:
       let vkey = extractVKey( zkey)
@@ -227,7 +227,7 @@ proc cliMain(cfg: Config) =
       withMeasureTime(cfg.measure_time,"verifying"):
         ok = verifyProof( vkey, proof )
         echo("verification succeeded = ",ok)
-    
+
   echo("")
 
 #-------------------------------------------------------------------------------

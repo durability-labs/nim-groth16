@@ -9,7 +9,12 @@
 import std/sequtils
 import std/sugar
 
-import constantine/math/arithmetic except Fp,Fr
+import pkg/constantine/math/arithmetic
+import pkg/constantine/math/io/io_fields
+import pkg/constantine/math/io/io_bigints
+import pkg/constantine/named/properties_fields
+import pkg/constantine/math/extension_fields/towers
+
 #import constantine/math/io/io_fields
 
 import groth16/bn128
@@ -19,9 +24,9 @@ import groth16/misc
 
 #-------------------------------------------------------------------------------
 
-type 
+type
   Poly* = object
-    coeffs* : seq[Fr]
+    coeffs* : seq[Fr[BN254_Snarks]]
 
 #-------------------------------------------------------------------------------
 
@@ -31,7 +36,7 @@ func polyDegree*(P: Poly) : int =
   while isZeroFr(xs[d]) and (d >= 0): d -= 1
   return d
 
-func polyIsZero*(P: Poly) : bool = 
+func polyIsZero*(P: Poly) : bool =
   let xs = P.coeffs ; let n = xs.len
   var b = true
   for i in 0..<n:
@@ -40,9 +45,9 @@ func polyIsZero*(P: Poly) : bool =
       break
   return b
 
-func polyIsEqual*(P, Q: Poly) : bool = 
-  let xs : seq[Fr] = P.coeffs ; let n = xs.len
-  let ys : seq[Fr] = Q.coeffs ; let m = ys.len
+func polyIsEqual*(P, Q: Poly) : bool =
+  let xs = P.coeffs ; let n = xs.len
+  let ys = Q.coeffs ; let m = ys.len
   var b = true
   if n >= m:
     for i in 0..<m: ( if not isEqualFr(xs[i], ys[i]): ( b = false ; break ) )
@@ -54,10 +59,10 @@ func polyIsEqual*(P, Q: Poly) : bool =
 
 #-------------------------------------------------------------------------------
 
-func polyEvalAt*(P: Poly, x0: Fr): Fr =
+func polyEvalAt*(P: Poly, x0: Fr[BN254_Snarks]): Fr[BN254_Snarks] =
   let cs = P.coeffs ; let n = cs.len
-  var y : Fr = zeroFr
-  var r : Fr = oneFr
+  var y : Fr[BN254_Snarks] = zeroFr
+  var r : Fr[BN254_Snarks] = oneFr
   if n > 0: y = cs[0]
   for i in 1..<n:
     r *= x0
@@ -67,13 +72,13 @@ func polyEvalAt*(P: Poly, x0: Fr): Fr =
 #-------------------------------------------------------------------------------
 
 func polyNeg*(P: Poly) : Poly =
-  let zs : seq[Fr] = map( P.coeffs , negFr )
+  let zs = map( P.coeffs , negFr )
   return Poly(coeffs: zs)
 
 func polyAdd*(P, Q: Poly) : Poly =
   let xs = P.coeffs ; let n = xs.len
   let ys = Q.coeffs ; let m = ys.len
-  var zs : seq[Fr] = newSeq[Fr](max(n,m))
+  var zs = newSeq[Fr[BN254_Snarks]](max(n,m))
   if n >= m:
     for i in 0..<m: zs[i] = ( xs[i] + ys[i] )
     for i in m..<n: zs[i] = ( xs[i]         )
@@ -85,7 +90,7 @@ func polyAdd*(P, Q: Poly) : Poly =
 func polySub*(P, Q: Poly) : Poly =
   let xs = P.coeffs ; let n = xs.len
   let ys = Q.coeffs ; let m = ys.len
-  var zs : seq[Fr] = newSeq[Fr](max(n,m))
+  var zs = newSeq[Fr[BN254_Snarks]](max(n,m))
   if n >= m:
     for i in 0..<m: zs[i] = ( xs[i]  - ys[i] )
     for i in m..<n: zs[i] = ( xs[i]          )
@@ -97,7 +102,7 @@ func polySub*(P, Q: Poly) : Poly =
 #-------------------------------------------------------------------------------
 
 func polyScale*(s: Fr, P: Poly): Poly =
-  let zs : seq[Fr] = map( P.coeffs , proc (x: Fr): Fr = s*x )
+  let zs = map( P.coeffs , proc (x: Fr[BN254_Snarks]): Fr[BN254_Snarks] = s*x )
   return Poly(coeffs: zs)
 
 #-------------------------------------------------------------------------------
@@ -106,13 +111,13 @@ func polyMulNaive*(P, Q : Poly): Poly =
   let xs = P.coeffs ; let n1 = xs.len
   let ys = Q.coeffs ; let n2 = ys.len
   let N  = n1 + n2 - 1
-  var zs : seq[Fr] = newSeq[Fr](N) 
+  var zs = newSeq[Fr[BN254_Snarks]](N)
   for k in 0..<N:
     # 0 <= i <= min(k , n1-1)
     # 0 <= j <= min(k , n2-1)
     # k = i + j
     # 0 >= i = k - j >= k - min(k , n2-1)
-    # 0 >= j = k - i >= k - min(k , n1-1)   
+    # 0 >= j = k - i >= k - min(k , n1-1)
     let A : int = max( 0 , k - min(k , n2-1) )
     let B : int = min( k , n1-1 )
     zs[k] = zeroFr
@@ -124,7 +129,7 @@ func polyMulNaive*(P, Q : Poly): Poly =
 #-------------------------------------------------------------------------------
 
 # multiply two polynomials using FFT
-func polyMulFFT*(P, Q: Poly): Poly = 
+func polyMulFFT*(P, Q: Poly): Poly =
   let n1 = P.coeffs.len
   let n2 = Q.coeffs.len
 
@@ -132,10 +137,10 @@ func polyMulFFT*(P, Q: Poly): Poly =
   let N    : int    = (1 shl log2)
   let D    : Domain = createDomain( N )
 
-  let us : seq[Fr] = extendAndForwardNTT( P.coeffs, D )
-  let vs : seq[Fr] = extendAndForwardNTT( Q.coeffs, D )
-  let zs : seq[Fr] = collect( newSeq, (for i in 0..<N: us[i]*vs[i] ))
-  let ws : seq[Fr] = inverseNTT( zs, D ) 
+  let us = extendAndForwardNTT( P.coeffs, D )
+  let vs = extendAndForwardNTT( Q.coeffs, D )
+  let zs = collect( newSeq, (for i in 0..<N: us[i]*vs[i] ))
+  let ws = inverseNTT( zs, D )
 
   return Poly(coeffs: ws)
 
@@ -143,8 +148,8 @@ func polyMulFFT*(P, Q: Poly): Poly =
 
 # WARNING: this is using the naive implementation!
 func polyMul*(P, Q : Poly): Poly =
-  # return polyMulFFT(P, Q)   
-  return polyMulNaive(P, Q)   
+  # return polyMulFFT(P, Q)
+  return polyMulNaive(P, Q)
 
 #-------------------------------------------------------------------------------
 
@@ -160,39 +165,39 @@ func `*`*(P: Poly, s: Fr  ): Poly  = return polyScale(s, P)
 #-------------------------------------------------------------------------------
 
 # the generalized vanishing polynomial `(a*x^N - b)`
-func generalizedVanishingPoly*(N: int, a: Fr, b: Fr): Poly = 
+func generalizedVanishingPoly*(N: int, a: Fr[BN254_Snarks], b: Fr[BN254_Snarks]): Poly =
   assert( N>=1 )
-  var cs : seq[Fr] = newSeq[Fr]( N+1 )
+  var cs = newSeq[Fr[BN254_Snarks]]( N+1 )
   cs[0] = negFr(b)
   cs[N] = a
   return Poly(coeffs: cs)
 
 # the vanishing polynomial `(x^N - 1)`
-func vanishingPoly*(N: int): Poly = 
+func vanishingPoly*(N: int): Poly =
   return generalizedVanishingPoly(N, oneFr, oneFr)
 
-func vanishingPoly*(D: Domain): Poly = 
+func vanishingPoly*(D: Domain): Poly =
   return vanishingPoly(D.domainSize)
 
 #-------------------------------------------------------------------------------
 
 type
   QuotRem*[T] = object
-    quot* : T 
-    rem*  : T 
+    quot* : T
+    rem*  : T
 
 # divide by the vanishing polynomial `(x^N - 1)`
 # returns the quotient and remainder
-func polyQuotRemByVanishing*(P: Poly, N: int): QuotRem[Poly] = 
+func polyQuotRemByVanishing*(P: Poly, N: int): QuotRem[Poly] =
   assert( N>=1 )
   let deg  : int     = polyDegree(P)
-  let src  : seq[Fr] = P.coeffs 
-  var quot : seq[Fr] = newSeq[Fr]( max(1, deg - N + 1) )
-  var rem  : seq[Fr] = newSeq[Fr]( N )
+  let src  = P.coeffs
+  var quot = newSeq[Fr[BN254_Snarks]]( max(1, deg - N + 1) )
+  var rem  = newSeq[Fr[BN254_Snarks]]( N )
 
   if deg < N:
     rem = src
-  
+
   else:
 
     # compute quotient
@@ -212,7 +217,7 @@ func polyQuotRemByVanishing*(P: Poly, N: int): QuotRem[Poly] =
   return QuotRem[Poly]( quot:Poly(coeffs:quot), rem:Poly(coeffs:rem) )
 
 # divide by the vanishing polynomial `(x^N - 1)`
-func polyDivideByVanishing*(P: Poly, N: int): Poly = 
+func polyDivideByVanishing*(P: Poly, N: int): Poly =
   let qr = polyQuotRemByVanishing(P, N)
   assert( polyIsZero(qr.rem) )
   return qr.quot
@@ -222,15 +227,15 @@ func polyDivideByVanishing*(P: Poly, N: int): Poly =
 # Lagrange basis polynomials
 func lagrangePoly*(D: Domain, k: int): Poly =
   let N             = D.domainSize
-  let omMinusK : Fr = smallPowFr( D.invDomainGen , k )
-  let invN     : Fr = invFr(intToFr(N))
+  let omMinusK = smallPowFr( D.invDomainGen , k )
+  let invN     = invFr(intToFr(N))
 
-  var cs : seq[Fr]  = newSeq[Fr]( N )
+  var cs  = newSeq[Fr[BN254_Snarks]]( N )
   if k == 0:
     for i in 0..<N: cs[i] = invN
   else:
-    var s : Fr = invN
-    for i in 0..<N: 
+    var s = invN
+    for i in 0..<N:
       cs[i] = s
       s *= omMinusK
 
@@ -239,7 +244,7 @@ func lagrangePoly*(D: Domain, k: int): Poly =
 #---------------------------------------
 
 # evaluate a Lagrange basis polynomial at a given point `zeta` (outside the domain)
-func evalLagrangePolyAt*(D: Domain, k: int, zeta: Fr): Fr =
+func evalLagrangePolyAt*(D: Domain, k: int, zeta: Fr[BN254_Snarks]): Fr[BN254_Snarks] =
   let omegaK = smallPowFr(D.domainGen, k)
   let denom  = (zeta - omegaK)
   if bool(isZero(denom)):
@@ -252,16 +257,16 @@ func evalLagrangePolyAt*(D: Domain, k: int, zeta: Fr): Fr =
 #-------------------------------------------------------------------------------
 
 # evaluates a polynomial on an FFT domain
-func polyForwardNTT*(P: Poly, D: Domain): seq[Fr] =
+func polyForwardNTT*(P: Poly, D: Domain): seq[Fr[BN254_Snarks]] =
   let n = P.coeffs.len
   assert( n <= D.domainSize , "the domain must be as least as big as the polynomial" )
-  let src : seq[Fr] = P.coeffs
+  let src = P.coeffs
   return forwardNTT(src, D)
 
 #---------------------------------------
 
 # interpolates a polynomial on an FFT domain
-func polyInverseNTT*(ys: seq[Fr], D: Domain): Poly =
+func polyInverseNTT*(ys: seq[Fr[BN254_Snarks]], D: Domain): Poly =
   let n = ys.len
   assert( n == D.domainSize , "the domain must be same size as the input" )
   let tgt = inverseNTT(ys, D)
@@ -280,7 +285,7 @@ proc sanityCheckOneHalf*() =
 
 #-------------------
 
-proc sanityCheckVanishing*() = 
+proc sanityCheckVanishing*() =
   var js : seq[int] = toSeq(101..112)
   let cs : seq[Fr]  = map( js, intToFr )
   let P  : Poly     = Poly( coeffs:cs )
@@ -304,13 +309,13 @@ proc sanityCheckVanishing*() =
 
 #-------------------
 
-proc sanityCheckNTT*() = 
+proc sanityCheckNTT*() =
   var js : seq[int] = toSeq(101..108)
   let cs : seq[Fr]  = map( js, intToFr )
   let P  : Poly     = Poly( coeffs:cs )
   let D  : Domain   = createDomain(8)
   let xs : seq[Fr]  = D.enumerateDomain()
-  let ys : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(P,x)) ) 
+  let ys : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(P,x)) )
   let zs : seq[Fr]  = polyForwardNTT(P ,D)
   let Q  : Poly     = polyInverseNTT(zs,D)
   debugPrintFrSeq("xs", xs)
@@ -320,7 +325,7 @@ proc sanityCheckNTT*() =
 
 #-------------------
 
-proc sanityCheckMulFFT*() = 
+proc sanityCheckMulFFT*() =
   var js : seq[int] = toSeq(101..110)
   let cs : seq[Fr]  = map( js, intToFr )
   let P  : Poly     = Poly( coeffs:cs )
@@ -339,19 +344,19 @@ proc sanityCheckMulFFT*() =
 
 #-------------------
 
-proc sanityCheckLagrangeBases*() = 
+proc sanityCheckLagrangeBases*() =
   let n  = 8
   let D  = createDomain(n)
 
   let L : seq[Poly] = collect( newSeq, (for k in 0..<n: lagrangePoly(D,k) ))
 
   let xs = enumerateDomain(D)
-  let ys0 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[0],x) )) 
-  let ys1 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[1],x) )) 
-  let ys5 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[5],x) )) 
-  let zs0 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(0,i)  )) 
-  let zs1 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(1,i)  )) 
-  let zs5 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(5,i)  )) 
+  let ys0 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[0],x) ))
+  let ys1 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[1],x) ))
+  let ys5 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[5],x) ))
+  let zs0 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(0,i)  ))
+  let zs1 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(1,i)  ))
+  let zs5 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(5,i)  ))
 
   echo("==============")
   for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys0[i]), " | z[i] = ",toDecimalFr(zs0[i]))
@@ -359,16 +364,16 @@ proc sanityCheckLagrangeBases*() =
   for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys1[i]), " | z[i] = ",toDecimalFr(zs1[i]))
   echo("--------------")
   for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys5[i]), " | z[i] = ",toDecimalFr(zs5[i]))
- 
+
   let zeta = intToFr(123457)
-  let us : seq[Fr]  = collect( newSeq, (for i in 0..<n: polyEvalAt(L[i],zeta)) ) 
-  let vs : seq[Fr]  = collect( newSeq, (for i in 0..<n: evalLagrangePolyAt(D,i,zeta)) ) 
+  let us : seq[Fr]  = collect( newSeq, (for i in 0..<n: polyEvalAt(L[i],zeta)) )
+  let vs : seq[Fr]  = collect( newSeq, (for i in 0..<n: evalLagrangePolyAt(D,i,zeta)) )
 
   echo("==============")
   for i in 0..<n: echo("i = ",i, " | u[i] = ",toDecimalFr(us[i]), " | v[i] = ",toDecimalFr(vs[i]))
 
   let prefix = "Lagrange basis sanity check = "
-  if ( ys0===zs0 and ys1===zs1 and ys5===zs5 and 
+  if ( ys0===zs0 and ys1===zs1 and ys5===zs5 and
        us===vs ):
     echo( prefix & "OK")
   else:

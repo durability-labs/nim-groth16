@@ -5,12 +5,12 @@
 #
 # file format
 # ===========
-# 
+#
 # standard iden3 binary container format.
 # field elements are in Montgomery representation, except for the coefficients
-# which for some reason are double Montgomery encoded... (and unlike the 
+# which for some reason are double Montgomery encoded... (and unlike the
 # `.wtns` and `.r1cs` files which use the standard representation)
-# 
+#
 # sections:
 #
 # 1: Header
@@ -81,7 +81,7 @@
 #   what normally should be the curve points `[ delta^-1 * tau^i * Z(tau) ]_1`
 #   HOWEVER, in the snarkjs implementation, they are different; namely
 #   `[ delta^-1 * L_{2i+1} (tau) ]_1` where L_k are Lagrange polynomials
-#   on the refined (double sized) domain 
+#   on the refined (double sized) domain
 #   See <https://geometry.xyz/notebook/the-hidden-little-secret-in-snarkjs>
 #   length = 2 * n8p * domSize = domSize G1 points
 #
@@ -94,18 +94,20 @@
 
 import std/streams
 
-import constantine/math/arithmetic except Fp, Fr
+import pkg/constantine/math/arithmetic except Fp, Fr
 #import constantine/math/io/io_bigints
- 
+
 import groth16/bn128
 import groth16/zkey_types
 import groth16/files/container
 import groth16/misc
 
+export zkey_types
+
 #-------------------------------------------------------------------------------
 
-proc parseSection1_proverType ( stream: Stream, user: var Zkey, sectionLen: int ) = 
-  assert( sectionLen == 4 , "unexpected section length" )  
+proc parseSection1_proverType ( stream: Stream, user: var ZKey, sectionLen: int ) =
+  assert( sectionLen == 4 , "unexpected section length" )
   let proverType = stream.readUint32
   assert( proverType == 1 , "expecting `.zkey` file for a Groth16 prover")
 
@@ -128,8 +130,8 @@ proc parseSection2_GrothHeader( stream: Stream, user: var ZKey, sectionLen: int 
 
   header.flavour = Snarkjs
 
-  assert( n8p == 32 , "expecting 256 bit primes")     
-  assert( n8r == 32 , "expecting 256 bit primes")     
+  assert( n8p == 32 , "expecting 256 bit primes")
+  assert( n8r == 32 , "expecting 256 bit primes")
 
   assert( bool(p == primeP) , "expecting the alt-bn128 curve" )
   assert( bool(r == primeR) , "expecting the alt-bn128 curve" )
@@ -171,7 +173,7 @@ proc parseSection4_Coeffs( stream: Stream, user: var ZKey, sectionLen: int ) =
   assert( sectionLen == 4 + ncoeffs*(32+12) , "unexpected section length" )
   let nrows = user.header.domainSize
   let ncols = user.header.nvars
-  
+
   var coeffs : seq[Coeff]
   for i in 1..ncoeffs:
     let m = int( stream.readUint32() )  # which matrix
@@ -188,7 +190,7 @@ proc parseSection4_Coeffs( stream: Stream, user: var ZKey, sectionLen: int ) =
     let cf = loadValueFrWTF( stream )      # Jordi, WTF is this encoding ?!?!?!!111
     let entry = Coeff( matrix:sel, row:r, col:c, coeff:cf )
     coeffs.add( entry )
-  
+
   user.coeffs = coeffs
 
 #-------------------------------------------------------------------------------
@@ -225,7 +227,7 @@ proc parseSection9_PointsH1( stream: Stream, user: var ZKey, sectionLen: int ) =
 
 #-------------------------------------------------------------------------------
 
-proc zkeyCallback(stream: Stream, sectId: int, sectLen: int, user: var ZKey) = 
+proc zkeyCallback(stream: Stream, sectId: int, sectLen: int, user: var ZKey) =
   case sectId
     of 1: parseSection1_proverType(  stream, user, sectLen )
     of 2: parseSection2_GrothHeader( stream, user, sectLen )
@@ -238,7 +240,7 @@ proc zkeyCallback(stream: Stream, sectId: int, sectLen: int, user: var ZKey) =
     of 9: parseSection9_PointsH1(    stream, user, sectLen )
     else: discard
 
-proc parseZKey* (fname: string): ZKey = 
+proc parseZKey* (fname: string): ZKey =
   var zkey : ZKey
   parseContainer( "zkey", 1, fname, zkey, zkeyCallback, proc (id: int): bool = id == 1 )
   parseContainer( "zkey", 1, fname, zkey, zkeyCallback, proc (id: int): bool = id == 2 )

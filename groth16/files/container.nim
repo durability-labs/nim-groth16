@@ -14,7 +14,7 @@
 #
 # for each section:
 # -----------------
-#   section id         : word32 
+#   section id         : word32
 #   section size       : word64
 #   section data       : <section_size> number of bytes
 #
@@ -23,32 +23,33 @@
 
 import std/streams
 
-import sugar
+import std/sugar
 
-import constantine/math/arithmetic except Fp, Fr
-import constantine/math/io/io_bigints
+import pkg/constantine/math/arithmetic except Fp, Fr
+import pkg/constantine/math/io/io_bigints
 
 #-------------------------------------------------------------------------------
 
-type 
+type
   SectionCallback*[T] = proc (stream: Stream, sectId: int, sectLen: int, user: var T) {.closure.}
+  Filt* = ((int) {.raises: [], gcsafe.} -> bool)
 
 #-------------------------------------------------------------------------------
 
-func magicWord(magic: string): uint32 = 
+func magicWord(magic: string): uint32 =
   assert( magic.len == 4, "magicWord: expecting a string of 4 characters" )
-  var w : uint32 = 0 
+  var w : uint32 = 0
   for i in 0..3:
-    let a = uint32(ord(magic[i])) 
+    let a = uint32(ord(magic[i]))
     w += a shl (8*i)
   return w
 
 #-------------------------------------------------------------------------------
 
-proc parsePrimeField*( stream: Stream ) : (int, BigInt[256]) = 
+proc parsePrimeField*( stream: Stream ) : (int, BigInt[256]) =
   let n8p = int( stream.readUint32() )
   assert( n8p <= 32 , "at most 256 bit primes are allowed" )
-  var p_bytes : array[32, uint8] 
+  var p_bytes : array[32, uint8]
   discard stream.readData( addr(p_bytes), n8p )
   var p : BigInt[256]
   unmarshal(p, p_bytes, littleEndian);
@@ -60,8 +61,8 @@ proc readSection[T] ( expectedMagic: string
                     , expectedVersion: int
                     , stream: Stream
                     , user: var T
-                    , callback: SectionCallback[T] 
-                    , filt: (int) -> bool ) =
+                    , callback: SectionCallback[T]
+                    , filt: Filt ) {.raises: [IOError, OSError].} =
 
   let sectId  = int( stream.readUint32() )
   let sectLen = int( stream.readUint64() )
@@ -76,8 +77,8 @@ proc parseContainer*[T] ( expectedMagic: string
                         , expectedVersion: int
                         , fname: string
                         , user: var T
-                        , callback: SectionCallback[T] 
-                        , filt: (int) -> bool ) =
+                        , callback: SectionCallback[T]
+                        , filt: Filt ) {.raises: [IOError, OSError].} =
 
   let stream = newFileStream(fname, mode = fmRead)
   defer: stream.close()
