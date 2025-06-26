@@ -224,7 +224,8 @@ func pairing* (p: G1, q: G2) : Fp12 =
 proc sanityCheckGroupGen*() =
   echo( "gen1 on the curve  = ", checkCurveEqG1(gen1.x,gen1.y) )
   echo( "gen2 on the curve  = ", checkCurveEqG2(gen2.x,gen2.y) )
-  echo( "order of gen1 is R = ", (not bool(isInf(gen1))) and bool(isInf(primeR ** gen1)) )
-  echo( "order of gen2 is R = ", (not bool(isInf(gen2))) and bool(isInf(primeR ** gen2)) )
+  # TODO: fix compilation error with Constantine 0.2.0:
+  # echo( "order of gen1 is R = ", (not bool(isNeutral(gen1))) and bool(isNeutral(primeR ** gen1)) )
+  # echo( "order of gen2 is R = ", (not bool(isNeutral(gen2))) and bool(isNeutral(primeR ** gen2)) )
 
 #-------------------------------------------------------------------------------
