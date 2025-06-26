@@ -1,5 +1,5 @@
 
-import constantine/math/arithmetic except Fp, Fr
+import constantine/math/arithmetic
 import constantine/named/properties_fields
 import constantine/math/extension_fields/towers
 
@@ -30,7 +30,7 @@ type
     gamma2*      : G2                # = gamma * g2
     delta1*      : G1                # = delta * g1
     delta2*      : G2                # = delta * g2       
-    alphaBeta*   : Fp12              # = <alpha1 , beta2>
+    alphaBeta*   : Fp12[BN254_Snarks] # = <alpha1 , beta2>
 
   VerifierPoints* = object
     pointsIC*    : seq[G1]           # the points `delta^-1 * ( beta*A_j(tau) + alpha*B_j(tau) + C_j(tau) ) * g1` (for j <= npub)
@@ -51,7 +51,7 @@ type
     matrix* : MatrixSel
     row*    : int
     col*    : int
-    coeff*  : Fr
+    coeff*  : Fr[BN254_Snarks]
 
   ZKey* = object
     # sectionMask* : uint32

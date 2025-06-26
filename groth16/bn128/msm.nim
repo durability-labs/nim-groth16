@@ -12,12 +12,12 @@ import taskpools
 import constantine/platforms/abstractions   except Subgroup
 import constantine/math/endomorphisms/frobenius except Subgroup
 
-import constantine/math/arithmetic     except Fp, Fp2, Fr
-import constantine/math/io/io_fields   except Fp, Fp2, Fr
 import constantine/math/io/io_bigints
-import constantine/named/properties_fields except Fp, Fr, Subgroup
+import constantine/named/properties_fields except Subgroup
+import constantine/math/arithmetic
+import constantine/math/io/io_fields
 
-import constantine/math/extension_fields/towers                 as ext except Fp, Fp2, Fp12, Fr
+import constantine/math/extension_fields/towers                 as ext
 import constantine/math/elliptic/ec_shortweierstrass_affine     as aff except Subgroup
 import constantine/math/elliptic/ec_shortweierstrass_projective as prj except Subgroup
 import constantine/math/elliptic/ec_scalar_mul_vartime          as scl except Subgroup
@@ -31,7 +31,7 @@ import std/times
 
 #-------------------------------------------------------------------------------
 
-proc msmConstantineG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
+proc msmConstantineG1*( coeffs: openArray[Fr[BN254_Snarks]] , points: openArray[G1] ): G1 =
 
   # let start = cpuTime()
 
@@ -59,7 +59,7 @@ proc msmConstantineG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
 
 #---------------------------------------
 
-func msmConstantineG2*( coeffs: openArray[Fr] , points: openArray[G2] ): G2 =
+func msmConstantineG2*( coeffs: openArray[Fr[BN254_Snarks]] , points: openArray[G2] ): G2 =
 
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
@@ -85,7 +85,7 @@ func msmConstantineG2*( coeffs: openArray[Fr] , points: openArray[G2] ): G2 =
 
 const task_multiplier : int = 1
 
-proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G1] ): G1 =
+proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr[BN254_Snarks]] , points: seq[G1] ): G1 =
 
   # for N <= 255 , we use 1 thread
   # for N == 256 , we use 2 threads
@@ -124,7 +124,7 @@ proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G1] 
 
 #---------------------------------------
 
-proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G2] ): G2 =
+proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr[BN254_Snarks]] , points: seq[G2] ): G2 =
 
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
@@ -158,7 +158,7 @@ proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G2] 
 
 #-------------------------------------------------------------------------------
 
-func msmNaiveG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
+func msmNaiveG1*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G1] ): G1 =
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
 
@@ -178,7 +178,7 @@ func msmNaiveG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
 
 #---------------------------------------
 
-func msmNaiveG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 =
+func msmNaiveG2*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G2] ): G2 =
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
 
@@ -198,8 +198,8 @@ func msmNaiveG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 =
 
 #-------------------------------------------------------------------------------
 
-proc msmG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 = msmConstantineG1(coeffs, points)
-proc msmG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 = msmConstantineG2(coeffs, points)
+proc msmG1*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G1] ): G1 = msmConstantineG1(coeffs, points)
+proc msmG2*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G2] ): G2 = msmConstantineG2(coeffs, points)
 
 #-------------------------------------------------------------------------------
 

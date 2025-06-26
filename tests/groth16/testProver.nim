@@ -44,7 +44,7 @@ const myR1CS =
       )
 
 # the equation we want prove is `7*11*13 + 1022 == 2023`
-let myWitnessValues : seq[Fr] = map( @[ 1, 2023, 1022, 7, 11, 13, 7*11, 7*11*13 ] , intToFr )
+let myWitnessValues = map( @[ 1, 2023, 1022, 7, 11, 13, 7*11, 7*11*13 ] , intToFr )
 # wire indices:         ^^^^^^^         0      1    2  3   4   5    6      7
 
 let myWitness = 

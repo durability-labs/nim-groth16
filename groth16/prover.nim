@@ -20,11 +20,11 @@ import std/times
 import std/cpuinfo
 import system
 import taskpools
+import constantine/math/arithmetic
 import constantine/named/properties_fields
+import constantine/math/extension_fields/towers
 
-import constantine/math/arithmetic except Fp, Fr
 #import constantine/math/io/io_extfields except Fp12
-#import constantine/math/extension_fields/towers except Fp2, Fp12  
 
 import groth16/bn128
 import groth16/math/domain
@@ -37,7 +37,7 @@ import groth16/misc
 
 type
   Proof* = object
-    publicIO* : seq[Fr]
+    publicIO* : seq[Fr[BN254_Snarks]]
     pi_a*     : G1
     pi_b*     : G2
     pi_c*     : G1
@@ -49,17 +49,17 @@ type
 
 type
   ABC = object
-    valuesAz : seq[Fr]
-    valuesBz : seq[Fr]
-    valuesCz : seq[Fr]
+    valuesAz : seq[Fr[BN254_Snarks]]
+    valuesBz : seq[Fr[BN254_Snarks]]
+    valuesCz : seq[Fr[BN254_Snarks]]
 
 # computes the vectors A*z, B*z, C*z where z is the witness
-func buildABC( zkey: ZKey, witness: seq[Fr] ): ABC = 
+func buildABC( zkey: ZKey, witness: seq[Fr[BN254_Snarks]] ): ABC =
   let hdr: GrothHeader = zkey.header
   let domSize = hdr.domainSize
 
-  var valuesAz : seq[Fr] = newSeq[Fr](domSize)
-  var valuesBz : seq[Fr] = newSeq[Fr](domSize)
+  var valuesAz = newSeq[Fr[BN254_Snarks]](domSize)
+  var valuesBz = newSeq[Fr[BN254_Snarks]](domSize)
 
   for entry in zkey.coeffs:
     case entry.matrix 
@@ -67,7 +67,7 @@ func buildABC( zkey: ZKey, witness: seq[Fr] ): ABC =
       of MatrixB: valuesBz[entry.row] += entry.coeff * witness[entry.col]
       else: raise newException(AssertionDefect, "fatal error")
 
-  var valuesCz : seq[Fr] = newSeq[Fr](domSize)
+  var valuesCz = newSeq[Fr[BN254_Snarks]](domSize)
   for i in 0..<domSize:
     valuesCz[i] = valuesAz[i] * valuesBz[i]
 
@@ -94,23 +94,26 @@ func computeQuotientNaive( abc: ABC ): Poly=
 #---------------------------------------
 
 # returns [ eta^i * xs[i] | i<-[0..n-1] ]
-func multiplyByPowers( xs: seq[Fr], eta: Fr ): seq[Fr] = 
+func multiplyByPowers( xs: seq[Fr[BN254_Snarks]], eta: Fr[BN254_Snarks] ): seq[Fr[BN254_Snarks]] =
   let n = xs.len
   assert(n >= 1)
-  var ys : seq[Fr] = newSeq[Fr](n)
+  var ys = newSeq[Fr[BN254_Snarks]](n)
   ys[0] = xs[0]
   if n >= 1: ys[1] = eta * xs[1]
-  var spow : Fr = eta
+  var spow = eta
   for i in 2..<n: 
     spow *= eta
     ys[i] = spow * xs[i]
   return ys
 
 # interpolates a polynomial, shift the variable by `eta`, and compute the shifted values
-func shiftEvalDomain( values: seq[Fr], D: Domain, eta: Fr ): seq[Fr] =
+func shiftEvalDomain(
+  values: seq[Fr[BN254_Snarks]],
+  D: Domain,
+  eta: Fr[BN254_Snarks] ): seq[Fr[BN254_Snarks]] =
   let poly : Poly = polyInverseNTT( values , D )
-  let cs : seq[Fr] = poly.coeffs
-  var ds : seq[Fr] = multiplyByPowers( cs, eta )
+  let cs : seq[Fr[BN254_Snarks]] = poly.coeffs
+  var ds : seq[Fr[BN254_Snarks]] = multiplyByPowers( cs, eta )
   return polyForwardNTT( Poly(coeffs:ds), D )
 
 # computes the quotient polynomial Q = (A*B - C) / Z
@@ -130,15 +133,15 @@ proc computeQuotientPointwise( nthreads: int, abc: ABC ): Poly =
 
   var pool = Taskpool.new(num_threads = nthreads)
 
-  var A1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
-  var B1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
-  var C1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
+  var A1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
+  var B1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
+  var C1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
 
   let A1 = sync A1fv
   let B1 = sync B1fv
   let C1 = sync C1fv
 
-  var ys : seq[Fr] = newSeq[Fr]( n )
+  var ys : seq[Fr[BN254_Snarks]] = newSeq[Fr[BN254_Snarks]]( n )
   for j in 0..<n: ys[j] = ( A1[j]*B1[j] - C1[j] ) * invZ1
   let Q1 = polyInverseNTT( ys, D )
   let cs = multiplyByPowers( Q1.coeffs, invFr(eta) )
@@ -156,7 +159,7 @@ proc computeQuotientPointwise( nthreads: int, abc: ABC ): Poly =
 # (shifted) Lagrange bases.
 # see <https://geometry.xyz/notebook/the-hidden-little-secret-in-snarkjs>
 #
-proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC): seq[Fr] =
+proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC): seq[Fr[BN254_Snarks]] =
   let n    = abc.valuesAz.len
   assert( abc.valuesBz.len == n )
   assert( abc.valuesCz.len == n )
@@ -165,15 +168,15 @@ proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC): seq[Fr] =
 
   var pool = Taskpool.new(num_threads = nthreads)
 
-  var A1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
-  var B1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
-  var C1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
+  var A1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
+  var B1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
+  var C1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
 
   let A1 = sync A1fv
   let B1 = sync B1fv
   let C1 = sync C1fv
 
-  var ys : seq[Fr] = newSeq[Fr]( n )
+  var ys : seq[Fr[BN254_Snarks]] = newSeq[Fr[BN254_Snarks]]( n )
   for j in 0..<n: ys[j] = ( A1[j] * B1[j] - C1[j] ) 
 
   pool.syncAll() 
@@ -210,8 +213,8 @@ proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC ): seq[Fr] =
 
 type
   Mask* = object
-    r*: Fr              # masking coefficients 
-    s*: Fr              # for zero knowledge
+    r*: Fr[BN254_Snarks]              # masking coefficients
+    s*: Fr[BN254_Snarks]              # for zero knowledge
 
 proc generateProofWithMask*( nthreads: int, printTimings: bool, zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
 
@@ -237,7 +240,7 @@ proc generateProofWithMask*( nthreads: int, printTimings: bool, zkey: ZKey, wtns
   assert( nvars == witness.len , "wrong witness length" )
 
   # remark: with the special variable "1" we actuall have (npub+1) public IO variables
-  var pubIO : seq[Fr] = newSeq[Fr]( npubs + 1)
+  var pubIO = newSeq[Fr[BN254_Snarks]]( npubs + 1)
   for i in 0..npubs: pubIO[i] = witness[i]             
 
   start = cpuTime()
@@ -246,7 +249,7 @@ proc generateProofWithMask*( nthreads: int, printTimings: bool, zkey: ZKey, wtns
     abc = buildABC( zkey, witness )
 
   start = cpuTime()
-  var qs : seq[Fr]
+  var qs : seq[Fr[BN254_Snarks]]
   withMeasureTime(printTimings,"computing the quotient (FFTs)"):
     case zkey.header.flavour
 
@@ -260,7 +263,7 @@ proc generateProofWithMask*( nthreads: int, printTimings: bool, zkey: ZKey, wtns
       of Snarkjs:
         qs = computeSnarkjsScalarCoeffs( nthreads, abc )
 
-  var zs : seq[Fr] = newSeq[Fr]( nvars - npubs - 1 )
+  var zs = newSeq[Fr[BN254_Snarks]]( nvars - npubs - 1 )
   for j in npubs+1..<nvars:
     zs[j-npubs-1] = witness[j]
 
@@ -313,8 +316,8 @@ proc generateProofWithTrivialMask*( nthreads: int, printTimings: bool, zkey: ZKe
 proc generateProof*( nthreads: int, printTimings: bool, zkey: ZKey, wtns: Witness ): Proof =
 
   # masking coeffs
-  let r : Fr = randFr()
-  let s : Fr = randFr()
+  let r = randFr()
+  let s = randFr()
   let mask = Mask(r: r, s: s)
 
   return generateProofWithMask( nthreads, printTimings, zkey, wtns, mask )

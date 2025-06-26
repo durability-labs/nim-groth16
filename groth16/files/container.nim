@@ -25,7 +25,7 @@ import std/streams
 
 import sugar
 
-import constantine/math/arithmetic except Fp, Fr
+import constantine/math/arithmetic
 import constantine/math/io/io_bigints
 
 #-------------------------------------------------------------------------------

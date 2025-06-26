@@ -18,17 +18,17 @@ import groth16/bn128/io
 
 #-------------------------------------------------------------------------------
 
-proc debugPrintFp*(prefix: string, x: Fp) =
+proc debugPrintFp*(prefix: string, x: Fp[BN254_Snarks]) =
   echo(prefix & toDecimalFp(x))
 
-proc debugPrintFp2*(prefix: string, z: Fp2) =
+proc debugPrintFp2*(prefix: string, z: Fp2[BN254_Snarks]) =
   echo(prefix & " 1 ~> " & toDecimalFp(z.coords[0]))
   echo(prefix & " u ~> " & toDecimalFp(z.coords[1]))
 
-proc debugPrintFr*(prefix: string, x: Fr) =
+proc debugPrintFr*(prefix: string, x: Fr[BN254_Snarks]) =
   echo(prefix & toDecimalFr(x))
 
-proc debugPrintFrSeq*(msg: string, xs: seq[Fr]) =
+proc debugPrintFrSeq*(msg: string, xs: seq[Fr[BN254_Snarks]]) =
   echo "---------------------"
   echo msg
   for x in xs:
