@@ -14,8 +14,7 @@ import std/sequtils
 import constantine/math/arithmetic
 import constantine/math/io/io_fields
 import constantine/math/io/io_bigints
-import constantine/math/config/curves
-import constantine/math/config/type_ff          as tff
+import constantine/named/properties_fields      as tff
 import constantine/math/extension_fields/towers as ext
 
 #-------------------------------------------------------------------------------

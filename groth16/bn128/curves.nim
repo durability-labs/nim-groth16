@@ -16,9 +16,8 @@
 import constantine/math/arithmetic    except Fp, Fr
 import constantine/math/io/io_fields  except Fp, Fr
 import constantine/math/io/io_bigints
-import constantine/math/config/curves  
 
-import constantine/math/config/type_ff          as tff except Fp, Fr
+import constantine/named/properties_fields      as tff except Fp, Fr
 import constantine/math/extension_fields/towers as ext except Fp, Fp2, Fp12, Fr
 
 import constantine/math/elliptic/ec_shortweierstrass_affine     as aff 

@@ -6,6 +6,7 @@ import std/random
 import constantine/math/arithmetic       except Fp, Fp2, Fr
 import constantine/math/io/io_fields     except Fp, Fp2, Fr
 import constantine/math/io/io_bigints
+import constantine/named/properties_fields
 
 import groth16/bn128/fields
 

@@ -10,13 +10,12 @@ import taskpools
 # import constantine/curves_primitives except Fp, Fp2, Fr
  
 import constantine/platforms/abstractions   except Subgroup
-import constantine/math/isogenies/frobenius except Subgroup
+import constantine/math/endomorphisms/frobenius except Subgroup
 
 import constantine/math/arithmetic     except Fp, Fp2, Fr
 import constantine/math/io/io_fields   except Fp, Fp2, Fr
 import constantine/math/io/io_bigints
-import constantine/math/config/curves  except G1, G2, Subgroup
-import constantine/math/config/type_ff except Fp, Fr, Subgroup
+import constantine/named/properties_fields except Fp, Fr, Subgroup
 
 import constantine/math/extension_fields/towers                 as ext except Fp, Fp2, Fp12, Fr
 import constantine/math/elliptic/ec_shortweierstrass_affine     as aff except Subgroup

@@ -9,6 +9,9 @@
 # equation: y^2 = x^3 + 3
 #
 
+import constantine/named/properties_fields
+import constantine/math/extension_fields/towers
+
 import groth16/bn128/fields
 import groth16/bn128/curves
 import groth16/bn128/io

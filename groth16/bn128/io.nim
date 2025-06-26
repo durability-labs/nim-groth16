@@ -6,8 +6,8 @@ import std/streams
 import constantine/math/arithmetic    except Fp, Fp2, Fr
 import constantine/math/io/io_fields  except Fp, Fp2, Fp
 import constantine/math/io/io_bigints
-import constantine/math/config/curves
-import constantine/math/config/type_ff as tff except Fp, Fp2, Fr
+import constantine/named/properties_fields as tff except Fp, Fp2, Fr
+import constantine/math/extension_fields/towers
 
 import groth16/bn128/fields
 import groth16/bn128/curves

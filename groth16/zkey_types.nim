@@ -1,5 +1,7 @@
 
 import constantine/math/arithmetic except Fp, Fr
+import constantine/named/properties_fields
+import constantine/math/extension_fields/towers
 
 import groth16/bn128
 

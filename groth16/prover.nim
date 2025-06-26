@@ -20,6 +20,7 @@ import std/times
 import std/cpuinfo
 import system
 import taskpools
+import constantine/named/properties_fields
 
 import constantine/math/arithmetic except Fp, Fr
 #import constantine/math/io/io_extfields except Fp12
