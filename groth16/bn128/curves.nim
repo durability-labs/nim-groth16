@@ -29,19 +29,19 @@ import groth16/bn128/fields
 
 #-------------------------------------------------------------------------------
 
-type G1*   = aff.ECP_ShortW_Aff[Fp , aff.G1]
-type G2*   = aff.ECP_ShortW_Aff[Fp2, aff.G2]
+type G1*   = aff.EC_ShortW_Aff[Fp , aff.G1]
+type G2*   = aff.EC_ShortW_Aff[Fp2, aff.G2]
 
-type ProjG1*  = prj.ECP_ShortW_Prj[Fp , prj.G1]
-type ProjG2*  = prj.ECP_ShortW_Prj[Fp2, prj.G2]
+type ProjG1*  = prj.EC_ShortW_Prj[Fp , prj.G1]
+type ProjG2*  = prj.EC_ShortW_Prj[Fp2, prj.G2]
 
 #-------------------------------------------------------------------------------
 
 func unsafeMkG1* ( X, Y: Fp ) : G1 =
-  return aff.ECP_ShortW_Aff[Fp, aff.G1](x: X, y: Y)
+  return aff.EC_ShortW_Aff[Fp, aff.G1](x: X, y: Y)
 
 func unsafeMkG2* ( X, Y: Fp2 ) : G2 =
-  return aff.ECP_ShortW_Aff[Fp2, aff.G2](x: X, y: Y)
+  return aff.EC_ShortW_Aff[Fp2, aff.G2](x: X, y: Y)
 
 #-------------------------------------------------------------------------------
 
@@ -216,7 +216,7 @@ func `**`*( coeff: BigInt , point: G2 ) : G2 =
 
 func pairing* (p: G1, q: G2) : Fp12 =
   var t : Fp12
-  ate.pairing_bn[BN254Snarks]( t, p, q )
+  ate.pairing_bn( t, p, q )
   return t
 
 #-------------------------------------------------------------------------------
