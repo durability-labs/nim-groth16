@@ -163,7 +163,7 @@ func msmNaiveG1*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G1] ): G1 =
   assert( N == points.len, "incompatible sequence lengths" )
 
   var s : ProjG1
-  s.setInf()
+  s.setNeutral()
 
   for i in 0..<N:
     var t : ProjG1
@@ -183,7 +183,7 @@ func msmNaiveG2*( coeffs: seq[Fr[BN254_Snarks]] , points: seq[G2] ): G2 =
   assert( N == points.len, "incompatible sequence lengths" )
 
   var s : ProjG2
-  s.setInf()
+  s.setNeutral()
 
   for i in 0..<N:
     var t : ProjG2
