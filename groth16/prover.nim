@@ -116,6 +116,17 @@ func shiftEvalDomain(
   var ds : seq[Fr[BN254_Snarks]] = multiplyByPowers( cs, eta )
   return polyForwardNTT( Poly(coeffs:ds), D )
 
+# Wraps shiftEvalDomain such that it can be called by Taskpool.spawn. The result
+# is written to the output parameter. Has an unused return type because
+# Taskpool.spawn cannot handle a void return type.
+func shiftEvalDomainTask(
+  values: seq[Fr[BN254_Snarks]],
+  D: Domain,
+  eta: Fr[BN254_Snarks],
+  output: ptr Isolated[seq[Fr[BN254_Snarks]]]): bool =
+
+  output[] = isolate shiftEvalDomain(values, D, eta)
+
 # computes the quotient polynomial Q = (A*B - C) / Z
 # by computing the values on a shifted domain, and interpolating the result
 # remark: Q has degree `n-2`, so it's enough to use a domain of size n
@@ -133,13 +144,19 @@ proc computeQuotientPointwise( nthreads: int, abc: ABC ): Poly =
 
   var pool = Taskpool.new(num_threads = nthreads)
 
-  var A1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
-  var B1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
-  var C1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
+  var outputA1, outputB1, outputC1: Isolated[seq[Fr[BN254_Snarks]]]
 
-  let A1 = sync A1fv
-  let B1 = sync B1fv
-  let C1 = sync C1fv
+  var taskA1 = pool.spawn shiftEvalDomainTask( abc.valuesAz, D, eta, addr outputA1 )
+  var taskB1 = pool.spawn shiftEvalDomainTask( abc.valuesBz, D, eta, addr outputB1 )
+  var taskC1 = pool.spawn shiftEvalDomainTask( abc.valuesCz, D, eta, addr outputC1 )
+
+  discard sync taskA1
+  discard sync taskB1
+  discard sync taskC1
+
+  let A1 = outputA1.extract()
+  let B1 = outputB1.extract()
+  let C1 = outputC1.extract()
 
   var ys : seq[Fr[BN254_Snarks]] = newSeq[Fr[BN254_Snarks]]( n )
   for j in 0..<n: ys[j] = ( A1[j]*B1[j] - C1[j] ) * invZ1
@@ -168,13 +185,19 @@ proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC): seq[Fr[BN254_Snarks]]
 
   var pool = Taskpool.new(num_threads = nthreads)
 
-  var A1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
-  var B1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
-  var C1fv : FlowVar[seq[Fr[BN254_Snarks]]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
+  var outputA1, outputB1, outputC1: Isolated[seq[Fr[BN254_Snarks]]]
 
-  let A1 = sync A1fv
-  let B1 = sync B1fv
-  let C1 = sync C1fv
+  var taskA1 = pool.spawn shiftEvalDomainTask( abc.valuesAz, D, eta, addr outputA1 )
+  var taskB1 = pool.spawn shiftEvalDomainTask( abc.valuesBz, D, eta, addr outputB1 )
+  var taskC1 = pool.spawn shiftEvalDomainTask( abc.valuesCz, D, eta, addr outputC1 )
+
+  discard sync taskA1
+  discard sync taskB1
+  discard sync taskC1
+
+  let A1 = outputA1.extract()
+  let B1 = outputB1.extract()
+  let C1 = outputC1.extract()
 
   var ys : seq[Fr[BN254_Snarks]] = newSeq[Fr[BN254_Snarks]]( n )
   for j in 0..<n: ys[j] = ( A1[j] * B1[j] - C1[j] ) 
