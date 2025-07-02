@@ -57,7 +57,7 @@ let myWitness =
 #-------------------------------------------------------------------------------
 
 proc testProof(zkey: ZKey, witness: Witness): bool = 
-  let proof = generateProof( zkey, witness )
+  let proof = generateProof( 8, false, zkey, witness )
   let vkey  = extractVKey( zkey)
   let ok    = verifyProof( vkey, proof )
   return ok
