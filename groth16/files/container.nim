@@ -25,7 +25,7 @@ import std/streams
 
 import sugar
 
-import constantine/math/arithmetic except Fp, Fr
+import constantine/math/arithmetic
 import constantine/math/io/io_bigints
 
 #-------------------------------------------------------------------------------
@@ -61,7 +61,8 @@ proc readSection[T] ( expectedMagic: string
                     , stream: Stream
                     , user: var T
                     , callback: SectionCallback[T] 
-                    , filt: (int) -> bool ) =
+                    , filt: proc(_: int): bool {.raises: [IOError, OSError].}
+                    ) {.raises: [IOError, OSError].} =
 
   let sectId  = int( stream.readUint32() )
   let sectLen = int( stream.readUint64() )
@@ -77,7 +78,8 @@ proc parseContainer*[T] ( expectedMagic: string
                         , fname: string
                         , user: var T
                         , callback: SectionCallback[T] 
-                        , filt: (int) -> bool ) =
+                        , filt: proc(_: int): bool {.raises: [IOError, OSError].}
+                        ) {.raises: [IOError, OSError].} =
 
   let stream = newFileStream(fname, mode = fmRead)
   defer: stream.close()

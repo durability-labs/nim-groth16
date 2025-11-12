@@ -94,7 +94,7 @@
 
 import std/streams
 
-import constantine/math/arithmetic except Fp, Fr
+import constantine/math/arithmetic
 #import constantine/math/io/io_bigints
  
 import groth16/bn128

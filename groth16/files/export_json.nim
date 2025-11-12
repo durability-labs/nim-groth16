@@ -3,19 +3,20 @@
 # export proof and public input in `circom`-compatible JSON files
 #
 
-import constantine/math/arithmetic   except Fp, Fr
-#import constantine/math/io/io_fields except Fp, Fr
+import constantine/math/arithmetic
+import constantine/named/properties_fields
+import constantine/math/extension_fields/towers
 
 import groth16/bn128
 from groth16/prover import Proof
 
 #-------------------------------------------------------------------------------
 
-func toQuotedDecimalFp(x: Fp): string = 
+func toQuotedDecimalFp(x: Fp[BN254_Snarks]): string =
   let s : string = toDecimalFp(x)
   return ("\"" & s & "\"")
 
-func toQuotedDecimalFr(x: Fr): string = 
+func toQuotedDecimalFr(x: Fr[BN254_Snarks]): string =
   let s : string = toDecimalFr(x)
   return ("\"" & s & "\"")
 

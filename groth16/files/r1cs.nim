@@ -51,8 +51,9 @@
 
 import std/streams
 
-import constantine/math/arithmetic except Fp, Fr
+import constantine/math/arithmetic
 import constantine/math/io/io_bigints
+import constantine/named/properties_fields
 
 import groth16/bn128
 import groth16/files/container
@@ -67,8 +68,8 @@ type
     nPubIn*  : int           # number of public inputs
     nPrivIn* : int           # number of private inputs
     nLabels* : int           # number of labels
-  
-  Term*       = tuple[ wireIdx: int, value: Fr ]
+
+  Term*       = tuple[ wireIdx: int, value: Fr[BN254_Snarks] ]
   LinComb*    = seq[Term]
   Constraint* = tuple[ A: LinComb, B: LinComb, C: LinComb ]
 
