@@ -238,7 +238,7 @@ proc zkeyCallback(stream: Stream, sectId: int, sectLen: int, user: var ZKey) =
     of 9: parseSection9_PointsH1(    stream, user, sectLen )
     else: discard
 
-proc parseZKey* (fname: string): ZKey = 
+proc parseZKey* (fname: string): ZKey {.gcsafe.} = 
   var zkey : ZKey
   parseContainer( "zkey", 1, fname, zkey, zkeyCallback, proc (id: int): bool = id == 1 )
   parseContainer( "zkey", 1, fname, zkey, zkeyCallback, proc (id: int): bool = id == 2 )
