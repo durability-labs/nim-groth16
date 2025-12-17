@@ -1,4 +1,4 @@
-version     = "0.1.0"
+version     = "0.1.1"
 author      = "Balazs Komuves"
 description = "Groth16 proof system"
 license     = "MIT OR Apache-2.0"
