@@ -7,5 +7,6 @@ skipDirs    = @["groth16/example"]
 binDir      = "build"
 namedBin    = {"cli/cli_main": "nim-groth16"}.toTable()
 
-requires "https://github.com/status-im/nim-taskpools"
-requires "https://github.com/durability-labs/constantine#v0.2.0-fix-nimble-windows"
+requires "nim >= 2.0.0"
+requires "https://github.com/status-im/nim-taskpools >= 0.0.5"
+requires "https://github.com/mratsim/constantine#bc3845aa492b52f7fef047503b1592e830d1a774"
