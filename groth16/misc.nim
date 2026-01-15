@@ -4,7 +4,7 @@
 #
 
 import strformat
-import times, os, strutils
+import times, strutils
 
 #-------------------------------------------------------------------------------
 

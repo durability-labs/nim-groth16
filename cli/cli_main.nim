@@ -1,13 +1,8 @@
 
-import sugar
 import std/strutils
-import std/sequtils
-import std/os
 import std/cpuinfo
 import std/parseopt
 import std/times
-import std/options
-# import strformat
 
 import taskpools
 
@@ -20,6 +15,8 @@ import groth16/files/export_json
 import groth16/zkey_types
 import groth16/fake_setup
 import groth16/misc
+
+import testing
 
 #-------------------------------------------------------------------------------
 
@@ -37,6 +34,7 @@ proc printHelp() =
   echo " -y, --verify                    : verify a proof"
   echo " -u, --setup                     : perform (fake) trusted setup"
   echo " -n, --nomask                    : don't use random masking for full ZK"
+  echo " -s, --sanity                    : sanity test the partial prover"
   echo " -z, --zkey   = <circuit.zkey>   : the `.zkey` file"
   echo " -w, --wtns   = <circuit.wtns>   : the `.wtns` file" 
   echo " -r, --r1cs   = <circuit.r1cs>   : the `.r1cs` file" 
@@ -46,33 +44,35 @@ proc printHelp() =
 #-------------------------------------------------------------------------------
 
 type Config = object
-  zkey_file:    string
-  r1cs_file:    string
-  wtns_file:    string
-  output_file:  string
-  io_file:      string
-  verbose:      bool
-  debug:        bool
-  measure_time: bool
-  do_prove:     bool
-  do_verify:    bool
-  do_setup:     bool
-  no_masking:   bool
-  nthreads:     int
+  zkey_file:      string
+  r1cs_file:      string
+  wtns_file:      string
+  output_file:    string
+  io_file:        string
+  verbose:        bool
+  debug:          bool
+  measure_time:   bool
+  do_prove:       bool
+  do_verify:      bool
+  do_setup:       bool
+  no_masking:     bool
+  partial_sanity: bool
+  nthreads:       int
 
 const dummyConfig = 
-  Config( zkey_file:    ""
-        , r1cs_file:    ""
-        , wtns_file:    ""
-        , output_file:  ""
-        , io_file:      ""
-        , verbose:      false
-        , measure_time: false
-        , do_prove:     false
-        , do_verify:    false
-        , do_setup:     false
-        , no_masking:   false
-        , nthreads:     0
+  Config( zkey_file:      ""
+        , r1cs_file:      ""
+        , wtns_file:      ""
+        , output_file:    ""
+        , io_file:        ""
+        , verbose:        false
+        , measure_time:   false
+        , do_prove:       false
+        , do_verify:      false
+        , do_setup:       false
+        , no_masking:     false
+        , partial_sanity: false
+        , nthreads:       0
         )
 
 proc printConfig(cfg: Config) =
@@ -114,6 +114,7 @@ proc parseCliOptions(): Config =
       of "y", "verify"           : cfg.do_verify      = true
       of "u", "setup"            : cfg.do_setup       = true
       of "n", "nomask"           : cfg.no_masking     = true
+      of "s", "sanity"           : cfg.partial_sanity = true
       of "o", "output"           : cfg.output_file    = value
       of "r", "r1cs"             : cfg.r1cs_file      = value
       of "z", "zkey"             : cfg.zkey_file      = value
@@ -136,28 +137,6 @@ proc parseCliOptions(): Config =
 
   return cfg
 
-#-------------------------------------------------------------------------------
-
-#[
-proc testProveAndVerify*( zkey_fname, wtns_fname: string): (VKey,Proof) = 
-
-  echo("parsing witness & zkey files...")
-  let witness = parseWitness( wtns_fname)
-  let zkey    = parseZKey( zkey_fname)
-
-  echo("generating proof...")
-  let start = cpuTime()
-  let proof = generateProof( zkey, witness )
-  let elapsed = cpuTime() - start
-  echo("proving took ",seconds(elapsed))
-
-  echo("verifying the proof...")
-  let vkey = extractVKey( zkey)
-  let ok   = verifyProof( vkey, proof )
-  echo("verification succeeded = ",ok)
-
-  return (vkey,proof)
-]#
 
 #-------------------------------------------------------------------------------
 
@@ -197,6 +176,16 @@ proc cliMain(cfg: Config) =
   if cfg.debug:
     printGrothHeader(zkey.header)
     # debugPrintCoeffs(zkey.coeffs)
+
+  if cfg.partial_sanity:
+    if (cfg.wtns_file=="") or (cfg.zkey_file=="" and cfg.do_setup==false):
+      echo("cannot prove: missing witness and/or zkey file!")      
+      quit()
+    else:
+      var pool = Taskpool.new(cfg.nthreads)
+      let print_timings = cfg.measure_time and cfg.verbose
+      sanityCheckPartialProofs(zkey,wtns,pool,print_timings)
+      echo("sanity testing partial proofs...")
 
   if cfg.do_prove:
     if (cfg.wtns_file=="") or (cfg.zkey_file=="" and cfg.do_setup==false):

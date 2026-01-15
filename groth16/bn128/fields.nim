@@ -19,7 +19,7 @@ import constantine/math/extension_fields/towers as ext
 
 #-------------------------------------------------------------------------------
 
-type B*    = BigInt[256]
+type B* = BigInt[256]
 
 func mkFp2* (i: Fp[BN254_Snarks], u: Fp[BN254_Snarks]) : Fp2[BN254_Snarks] =
   let c : array[2, Fp[BN254_Snarks]] = [i,u]

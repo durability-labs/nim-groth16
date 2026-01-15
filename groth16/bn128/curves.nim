@@ -37,6 +37,14 @@ type ProjG2*  = prj.EC_ShortW_Prj[Fp2[BN254_Snarks], prj.G2]
 
 #-------------------------------------------------------------------------------
 
+func isEqualG1* (x, y: G1 ): bool = bool(x == y)
+func isEqualG2* (x, y: G2 ): bool = bool(x == y)
+
+func `===`*(x, y: G1 ): bool = isEqualG1(x,y)
+func `===`*(x, y: G2 ): bool = isEqualG2(x,y)
+
+#-------------------------------------------------------------------------------
+
 func unsafeMkG1* ( X, Y: Fp[BN254_Snarks] ) : G1 =
   return aff.EC_ShortW_Aff[Fp[BN254_Snarks], aff.G1](x: X, y: Y)
 

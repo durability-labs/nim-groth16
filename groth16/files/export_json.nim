@@ -67,11 +67,7 @@ proc writeG2( f: File, p: G2 ) =
 
 #-------------------------------------------------------------------------------
 
-# exports the proof into as a JSON file
-proc exportProof*( fpath: string, prf: Proof ) = 
-
-  let f = open(fpath, fmWrite)
-  defer: f.close()
+proc writeProof*( f: File, prf: Proof) = 
 
   f.writeLine("{ \"protocol\": \"groth16\"")
   f.writeLine(", \"curve\":    \"bn128\""  )
@@ -79,6 +75,13 @@ proc exportProof*( fpath: string, prf: Proof ) =
   f.writeLine(", \"pi_b\":" ) ; writeG2( f, prf.pi_b )
   f.writeLine(", \"pi_c\":" ) ; writeG1( f, prf.pi_c )
   f.writeLine("}")
+
+# exports the proof into as a JSON file
+proc exportProof*( fpath: string, prf: Proof ) = 
+
+  let f = open(fpath, fmWrite)
+  defer: f.close()
+  writeProof(f, prf)
 
 #-------------------------------------------------------------------------------
 

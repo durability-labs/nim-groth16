@@ -23,8 +23,6 @@
 
 import std/streams
 
-import sugar
-
 import constantine/math/arithmetic
 import constantine/math/io/io_bigints
 
