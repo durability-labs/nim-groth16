@@ -32,6 +32,14 @@ type
     nvars*  : int
     values* : seq[Fr[BN254_Snarks]]
 
+func makeWitnessBN254*(vals: seq[Fr[BN254_Snarks]]): Witness = 
+  return Witness(
+      curve  : "bn128"
+    , r      : primeR
+    , nvars  : vals.len
+    , values : vals
+    )
+
 #-------------------------------------------------------------------------------
 
 proc parseSection1_header( stream: Stream, user: var Witness, sectionLen: int ) =

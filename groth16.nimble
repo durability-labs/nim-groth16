@@ -6,6 +6,7 @@ license     = "MIT OR Apache-2.0"
 skipDirs    = @["groth16/example"]
 binDir      = "build"
 namedBin    = {"cli/cli_main": "nim-groth16"}.toTable()
+installExt  = @["nim"]
 
 requires "nim >= 2.0.0"
 requires "https://github.com/status-im/nim-taskpools >= 0.0.5"
