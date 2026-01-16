@@ -36,7 +36,6 @@ proc finishPartialProofWithMask*( zkey: ZKey, wtns: Witness, partialProof: Parti
   #   echo( "wtns.curve        = " & ($wtns.curve       ) )
 
   assert( zkey.header.curve == wtns.curve )
-  var start : float = 0
 
   let witness = wtns.values
 
@@ -89,12 +88,10 @@ proc finishPartialProofWithMask*( zkey: ZKey, wtns: Witness, partialProof: Parti
           compact_pointsC1[k] = pts.pointsC1[ i - startIdx ]
           k += 1
 
-  start = cpuTime()
   var abc : ABC 
   withMeasureTime(printTimings,"building 'ABC'"):
     abc = buildABC( zkey, witness )
 
-  start = cpuTime()
   var qs : seq[Fr[BN254_Snarks]]
   withMeasureTime(printTimings,"computing the quotient (FFTs)"):
     case zkey.header.flavour

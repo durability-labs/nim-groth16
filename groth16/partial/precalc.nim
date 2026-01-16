@@ -37,7 +37,6 @@ proc generatePartialProof*( zkey: ZKey, pwtns: PartialWitness, pool: Taskpool, p
     {.fatal: "Compile with arc/orc!".}
 
   # assert( zkey.header.curve == wtns.curve )
-  var start : float = 0
 
   let partial_witness = pwtns.values
 
@@ -96,12 +95,10 @@ proc generatePartialProof*( zkey: ZKey, pwtns: PartialWitness, pool: Taskpool, p
           k += 1
       
 #[
-  start = cpuTime()
   var abc : ABC 
   withMeasureTime(printTimings,"building 'ABC'"):
     abc = buildABC( zkey, witness )
 
-  start = cpuTime()
   var qs : seq[Fr[BN254_Snarks]]
   withMeasureTime(printTimings,"computing the quotient (FFTs)"):
     case zkey.header.flavour

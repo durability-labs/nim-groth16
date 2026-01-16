@@ -41,7 +41,6 @@ proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask, pool: Taskpo
   #   echo( "wtns.curve        = " & ($wtns.curve       ) )
 
   assert( zkey.header.curve == wtns.curve )
-  var start : float = 0
 
   let witness = wtns.values
 
@@ -58,12 +57,10 @@ proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask, pool: Taskpo
   var pubIO = newSeq[Fr[BN254_Snarks]]( npubs + 1)
   for i in 0..npubs: pubIO[i] = witness[i]             
 
-  start = cpuTime()
   var abc : ABC 
   withMeasureTime(printTimings,"building 'ABC'"):
     abc = buildABC( zkey, witness )
 
-  start = cpuTime()
   var qs : seq[Fr[BN254_Snarks]]
   withMeasureTime(printTimings,"computing the quotient (FFTs)"):
     case zkey.header.flavour
