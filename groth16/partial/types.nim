@@ -27,3 +27,6 @@ type
     partial_pi_c*  : G1          # =             sum z_j*[K_j]_1
 
 #-------------------------------------------------------------------------------
+
+func makePartialWitness*(vals: seq[Option[Fr[BN254_Snarks]]]): PartialWitness =
+  return PartialWitness(values: vals)
