@@ -7,7 +7,7 @@ import system
 import taskpools
 
 import constantine/platforms/abstractions       except Subgroup
-import constantine/math/endomorphisms/frobenius except Subgroup
+# import constantine/math/endomorphisms/frobenius except Subgroup
 
 import constantine/math/io/io_bigints
 import constantine/named/properties_fields except Subgroup

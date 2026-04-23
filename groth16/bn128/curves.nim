@@ -1,5 +1,5 @@
 #
-# the `alt-bn128` elliptic curve
+# the `BN254` (aka `alt-bn128`) elliptic curve
 #
 # See for example <https://hackmd.io/@jpw/bn254>
 #
@@ -53,8 +53,14 @@ func unsafeMkG2* ( X, Y: Fp2[BN254_Snarks] ) : G2 =
 
 #-------------------------------------------------------------------------------
 
-const infG1*   : G1  = unsafeMkG1( zeroFp  , zeroFp  )
-const infG2*   : G2  = unsafeMkG2( zeroFp2 , zeroFp2 )
+const infG1* : G1  = unsafeMkG1( zeroFp  , zeroFp  )
+const infG2* : G2  = unsafeMkG2( zeroFp2 , zeroFp2 )
+
+func isInfG1*(pt : G1): bool = bool(isNeutral(pt))
+func isInfG2*(pt : G2): bool = bool(isNeutral(pt))
+
+func isInfProjG1*(pt : ProjG1): bool = bool(isNeutral(pt))
+func isInfProjG2*(pt : ProjG2): bool = bool(isNeutral(pt))
 
 #-------------------------------------------------------------------------------
 
@@ -72,6 +78,10 @@ func checkCurveEqG1*( x, y: Fp[BN254_Snarks] ) : bool =
     eq -= y2
     # echo("eq = ",toDecimalFp(eq))
     return (bool(isZero(eq)))
+
+# note: for BN254, the G1 is the whole curve. This is however not true for other curves like BLS12-381!
+func checkSubgroupG1*( x, y: Fp[BN254_Snarks] ) : bool =
+  return checkCurveEqG1(x,y)
 
 #---------------------------------------
 
@@ -97,20 +107,48 @@ func checkCurveEqG2*( x, y: Fp2[BN254_Snarks] ) : bool =
     eq -= y2
     return isZeroFp2(eq)
 
+# both just fits into 254 bits
+const G2_cofactor: BigInt[254] = fromHex( BigInt[254] , "0x30644e72e131a029b85045b68181585e06ceecda572a2489345f2299c0f9fa8d" , bigEndian )
+const GroupOrder : BigInt[254] = fromHex( BigInt[254] , "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001" , bigEndian )
+
+# checks that the point is in the right subgroup
+func checkSubgroupG2*( x, y: Fp2[BN254_Snarks] ) : bool =
+
+  if not checkCurveEqG2(x,y):
+    # reject if not on the curve
+    return false
+  else:
+    # multiply by the order. Note: this is slow
+    # TODO: implement <https://hackmd.io/@jpw/bn254#mathbb-G_2-membership-check-using-efficient-endomorphism>
+    let point = unsafeMkG2(x,y)
+    var q : ProjG2
+    prj.fromAffine( q , point )
+    scl.scalarMul_vartime(  q , GroupOrder )
+    return bool(isNeutral(q))
+    # var r : G2
+    # prj.affine( r, q )
+
 #-------------------------------------------------------------------------------
 
 func mkG1*( x, y: Fp[BN254_Snarks] ) : G1 =
   if isZeroFp(x) and isZeroFp(y):
     return infG1
   else:
-    assert( checkCurveEqG1(x,y) , "mkG1: not a G1 curve point" )
+    assert( checkCurveEqG1(x,y) , "mkG1: not a G1 group point (in case of BN254, this is the same a curve point)" )
     return unsafeMkG1(x,y)
+
+func mkCurve2*( x, y: Fp2[BN254_Snarks] ) : G2 =
+  if isZeroFp2(x) and isZeroFp2(y):
+    return infG2
+  else:
+    assert( checkCurveEqG2(x,y) , "mkCurve2: not a curve point on the curve over the extended field" )
+    return unsafeMkG2(x,y)
 
 func mkG2*( x, y: Fp2[BN254_Snarks] ) : G2 =
   if isZeroFp2(x) and isZeroFp2(y):
     return infG2
   else:
-    assert( checkCurveEqG2(x,y) , "mkG2: not a G2 curve point" )
+    assert( checkSubgroupG2(x,y) , "mkG2: not a G2 group point" )
     return unsafeMkG2(x,y)
 
 #-------------------------------------------------------------------------------
@@ -132,11 +170,17 @@ const gen2* : G2 = unsafeMkG2( gen2_x, gen2_y )
 
 #-------------------------------------------------------------------------------
 
-func isOnCurveG1* ( p: G1 ) : bool =
+func isOnCurve1* ( p: G1 ) : bool =
   return checkCurveEqG1( p.x, p.y )
 
-func isOnCurveG2* ( p: G2 ) : bool =
+func isOnCurve2* ( p: G2 ) : bool =
   return checkCurveEqG2( p.x, p.y )
+
+func isInSubgroupG1* ( p: G1 ) : bool =
+  return checkSubgroupG1( p.x, p.y )
+
+func isInSubgroupG2* ( p: G2 ) : bool =
+  return checkSubgroupG2( p.x, p.y )
 
 #===============================================================================
 
@@ -229,11 +273,33 @@ func pairing* (p: G1, q: G2) : Fp12[BN254_Snarks] =
 
 #-------------------------------------------------------------------------------
 
-proc sanityCheckGroupGen*() =
-  echo( "gen1 on the curve  = ", checkCurveEqG1(gen1.x,gen1.y) )
-  echo( "gen2 on the curve  = ", checkCurveEqG2(gen2.x,gen2.y) )
-  # TODO: fix compilation error with Constantine 0.2.0:
-  # echo( "order of gen1 is R = ", (not bool(isNeutral(gen1))) and bool(isNeutral(primeR ** gen1)) )
-  # echo( "order of gen2 is R = ", (not bool(isNeutral(gen2))) and bool(isNeutral(primeR ** gen2)) )
+#[
+proc sanityCheckGroupGens*() =
+  echo( "gen1 on the curve        = ",  checkCurveEqG1(gen1.x,gen1.y) )
+  echo( "gen2 on the curve        = ",  checkCurveEqG2(gen2.x,gen2.y) )
+  echo( "gen2 is in the subgroup  = ", checkSubgroupG2(gen2.x,gen2.y) )
+
+  let primeR : BigInt[254] = fromHex( BigInt[254], "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001", bigEndian )
+  echo( "order of gen1 is R  = ", (not bool(isNeutral(gen1))) and bool(isNeutral(primeR ** gen1)) )
+  echo( "order of gen2 is R  = ", (not bool(isNeutral(gen2))) and bool(isNeutral(primeR ** gen2)) )
+
+#
+# the point (computed via Sage)
+#
+#   (2 : 2237046587054574173616397632856518880513033439888792180868262182050662989363*u + 10894412225134874879786325788974416805327887441035008073952212076423500941133 : 1)
+#
+# should be on the curve but not in the subgroup
+#
+proc sanityCheckInSubgroupG2*() = 
+  let pt2_x1  = fromHex(Fp[BN254_Snarks], "0x2")
+  let pt2_xu  = fromHex(Fp[BN254_Snarks], "0x0")
+  let pt2_y1  = fromHex(Fp[BN254_Snarks], "0x181604d0560080401c08b557815482553e278257d98100d193a011c42782474d")
+  let pt2_yu  = fromHex(Fp[BN254_Snarks], "0x04f21f9d99cc25f694cf22ff70dc0ac4692e7a721b725dc454a217f04bd03e33")
+  let pt2_x   = mkFp2( pt2_x1, pt2_xu )
+  let pt2_y   = mkFp2( pt2_y1, pt2_yu )
+  echo("pt2 is on the curve    (should be true )   = " ,  checkCurveEqG2(pt2_x, pt2_y) )
+  echo("pt2 is in the subgroup (should be false)   = " , checkSubgroupG2(pt2_x, pt2_y) )
+
+]#
 
 #-------------------------------------------------------------------------------

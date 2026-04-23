@@ -1,4 +1,6 @@
 
+{.used.} 
+
 import std/unittest
 import std/sequtils
 

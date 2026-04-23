@@ -33,9 +33,9 @@ proc verifyProof* (vkey: VKey, prf: Proof): bool =
 
   assert( prf.curve == "bn128" )
 
-  assert( isOnCurveG1(prf.pi_a) , "pi_a is not in G1" )
-  assert( isOnCurveG2(prf.pi_b) , "pi_b is not in G2" )
-  assert( isOnCurveG1(prf.pi_c) , "pi_c is not in G1" )
+  assert( isInSubgroupG1(prf.pi_a) , "pi_a is not in G1" )
+  assert( isInSubgroupG2(prf.pi_b) , "pi_b is not in G2" )
+  assert( isInSubgroupG1(prf.pi_c) , "pi_c is not in G1" )
 
   var pubG1 : G1 = msmG1( prf.publicIO , vkey.vpoints.pointsIC )  
 
