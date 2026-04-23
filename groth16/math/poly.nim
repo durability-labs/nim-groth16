@@ -91,7 +91,7 @@ func polySub*(P, Q: Poly) : Poly =
     for i in 0..<m: zs[i] = ( xs[i]  - ys[i] )
     for i in m..<n: zs[i] = ( xs[i]          )
   else:
-    for i in 0..<n: zs[i] = ( xs[i]  + ys[i] )
+    for i in 0..<n: zs[i] = ( xs[i]  - ys[i] )
     for i in n..<m: zs[i] = (   negFr( ys[i] ))
   return Poly(coeffs: zs)
 
