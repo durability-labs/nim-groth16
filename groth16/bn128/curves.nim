@@ -9,6 +9,8 @@
 # equation: y^2 = x^3 + 3
 #
 
+import std/bitops
+import std/options
 
 #import constantine/platforms/abstractions
 #import constantine/math/isogenies/frobenius
@@ -25,6 +27,9 @@ import constantine/math/elliptic/ec_shortweierstrass_projective as prj
 import constantine/math/pairings/pairings_bn                    as ate 
 import constantine/math/elliptic/ec_scalar_mul_vartime          as scl 
 
+import constantine/math/arithmetic/finite_fields_square_root    as sqrt
+import constantine/math/extension_fields/square_root_fp2        as sqrt2
+
 import groth16/bn128/fields
 
 #-------------------------------------------------------------------------------
@@ -34,6 +39,15 @@ type G2*   = aff.EC_ShortW_Aff[Fp2[BN254_Snarks], aff.G2]
 
 type ProjG1*  = prj.EC_ShortW_Prj[Fp[BN254_Snarks] , prj.G1]
 type ProjG2*  = prj.EC_ShortW_Prj[Fp2[BN254_Snarks], prj.G2]
+
+#-------------------------------------------------------------------------------
+# compressed points (supposedly compatible with arkworks-0.5)
+
+type ComprG1* = distinct array[32, byte];
+type ComprG2* = distinct array[64, byte];
+
+proc `==` *(a, b: ComprG1): bool {.borrow.}
+proc `==` *(a, b: ComprG2): bool {.borrow.}
 
 #-------------------------------------------------------------------------------
 
@@ -64,6 +78,9 @@ func isInfProjG2*(pt : ProjG2): bool = bool(isNeutral(pt))
 
 #-------------------------------------------------------------------------------
 
+# y^2 = x^3 + B where B = 3
+const theCoeffB = fromHex(Fp[BN254_Snarks], "0x0000000000000000000000000000000000000000000000000000000000000003")
+
 func checkCurveEqG1*( x, y: Fp[BN254_Snarks] ) : bool =
   if bool(isZero(x)) and bool(isZero(y)):
     # the point at infinity is on the curve by definition
@@ -74,7 +91,7 @@ func checkCurveEqG1*( x, y: Fp[BN254_Snarks] ) : bool =
     var x3 = x2 * x
     var eq : Fp[BN254_Snarks]
     eq =  x3
-    eq += intToFp(3)
+    eq += theCoeffB
     eq -= y2
     # echo("eq = ",toDecimalFp(eq))
     return (bool(isZero(eq)))
@@ -181,6 +198,113 @@ func isInSubgroupG1* ( p: G1 ) : bool =
 
 func isInSubgroupG2* ( p: G2 ) : bool =
   return checkSubgroupG2( p.x, p.y )
+
+#-------------------------------------------------------------------------------
+
+func unwrapComprG1*( c1: ComprG1 ): array[32,byte] = 
+  return array[32,byte](c1) 
+
+func unwrapComprG2*( c2: ComprG2 ): array[64,byte] = 
+  return array[64,byte](c2)
+
+func bigInt256_to_254(inp: BigInt[256]): BigInt[254] =
+  var res: BigInt[254]
+  res.copyTruncatedFrom(inp)
+  return res
+
+const halfPrime256 : BigInt[256] = fromHex( B, "0x183227397098d014dc2822db40c0ac2ecbc0b548b438e5469e10460b6c3e7ea3", bigEndian )
+const halfPrime254 : BigInt[254] = bigInt256_to_254( halfPrime256 )
+const thePrime254  : BigInt[254] = bigInt256_to_254( primeP       )
+
+# little-endian encoding of the X coord, with bit 255 set if `Y > P/2`
+func compressG1*( pt : G1 ) : ComprG1 = 
+  var xbig : BigInt[254] 
+  var ybig : BigInt[254]
+  xbig.fromField( pt.x )
+  ybig.fromField( pt.y )
+  let flag : bool = bool(ybig > halfPrime254)
+  var buf  : array[32,byte]
+  buf.marshal(xbig, littleEndian)
+  if (flag):
+    buf[31] = bitor( buf[31] , 0x80 );
+  return ComprG1(buf)
+
+func uncompressG1*( compr1 : ComprG1 ) : Option[G1] = 
+  var buf  : array[32,byte] = unwrapComprG1(compr1)
+  let flag : bool = (buf[31] >= 0x80)
+  buf[31] = bitand( buf[31] , 0x7f )
+  var xbig : BigInt[254]
+  xbig.unmarshal(buf, littleEndian)
+  if bool(xbig >= thePrime254):
+    return none(G1)
+  else:
+    var x : Fp[BN254_Snarks]
+    var y : Fp[BN254_Snarks]
+    x.fromBig(xbig)
+    y = x*x*x + theCoeffB
+    let ok = bool( sqrt.sqrt_if_square_vartime(y) )
+    if ok:
+      var ybig : BigInt[254]
+      ybig.fromField( y )
+      let switch = bool(ybig > halfPrime254) xor flag
+      if switch:
+        y.neg()
+      let g1 = unsafeMkG1(x,y)
+      return some(g1)
+    else:
+      return none(G1)
+
+#---------------------------------------
+
+# little-endian encoding of the X coord, with bit 255 set if `Y_imag > P/2`
+func compressG2*( pt : G2 ) : ComprG2 = 
+  var x_real_big : BigInt[254] 
+  var x_imag_big : BigInt[254] 
+  var y_imag_big : BigInt[254]
+  x_real_big.fromField( pt.x.coords[0] )
+  x_imag_big.fromField( pt.x.coords[1] )
+  y_imag_big.fromField( pt.y.coords[1] )
+  let flag : bool = bool(y_imag_big > halfPrime254)
+  var buf_real : array[32,byte]
+  var buf_imag : array[32,byte]
+  marshal(buf_real , x_real_big , littleEndian)
+  marshal(buf_imag , x_imag_big , littleEndian)
+  var buf: array[64,byte]
+  buf[ 0..31] = buf_real
+  buf[32..63] = buf_imag
+  if (flag):
+    buf[63] = bitor( buf[63] , 0x80 );
+  return ComprG2(buf)
+
+func uncompressG2*( compr2 : ComprG2 ) : Option[G2] = 
+  var buf  : array[64,byte] = unwrapComprG2(compr2)
+  let flag : bool = (buf[63] >= 0x80)
+  buf[63] = bitand( buf[63] , 0x7f )
+  var x_big_real : BigInt[254]
+  var x_big_imag : BigInt[254]
+  unmarshal(x_big_real , buf         , littleEndian)
+  unmarshal(x_big_imag , buf[32..63] , littleEndian)
+  if bool(x_big_real >= thePrime254) or bool(x_big_imag >= thePrime254):
+    return none(G2)
+  else:
+    var x_real : Fp[BN254_Snarks]
+    var x_imag : Fp[BN254_Snarks]
+    var y      : Fp2[BN254_Snarks]
+    x_real.fromBig(x_big_real)
+    x_imag.fromBig(x_big_imag)
+    let x: Fp2[BN254_Snarks] = mkFp2( x_real, x_imag )
+    y = x*x*x + twistCoeffB
+    let ok = bool( sqrt2.sqrt_if_square(y) )
+    if ok:
+      var y_big_imag : BigInt[254]
+      y_big_imag.fromField( y.coords[1] )
+      let switch = bool(y_big_imag > halfPrime254) xor flag
+      if switch:
+        y.neg()
+      let g2 = unsafeMkG2(x,y)
+      return some(g2)
+    else:
+      return none(G2)
 
 #===============================================================================
 

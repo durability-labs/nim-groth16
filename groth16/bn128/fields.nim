@@ -27,8 +27,9 @@ func mkFp2* (i: Fp[BN254_Snarks], u: Fp[BN254_Snarks]) : Fp2[BN254_Snarks] =
 
 #-------------------------------------------------------------------------------
 
-const primeP* : B = fromHex( B, "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47", bigEndian )
-const primeR* : B = fromHex( B, "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001", bigEndian )
+const primeR*     : B = fromHex( B, "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001", bigEndian )
+const primeP*     : B = fromHex( B, "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47", bigEndian )
+const halfPrimeP* : B = fromHex( B, "0x183227397098d014dc2822db40c0ac2ecbc0b548b438e5469e10460b6c3e7ea3", bigEndian )
 
 #-------------------------------------------------------------------------------
 

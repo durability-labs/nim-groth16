@@ -9,6 +9,7 @@ import constantine/math/io/io_bigints
 import constantine/named/properties_fields
 
 import groth16/bn128/fields
+import groth16/bn128/curves
 
 #-------------------------------------------------------------------------------
 # random values
@@ -65,6 +66,18 @@ proc randFr*(): Fr[BN254_Snarks] =
   var y : Fr[BN254_Snarks]
   y.fromBig( b )
   return y
+
+#-------------------------------------------------------------------------------
+
+proc randG1*(): G1 = 
+  let expo : BigInt[254] = randBig[254]()
+  return (expo ** gen1)
+
+proc randG2*(): G2 = 
+  let expo : BigInt[254] = randBig[254]()
+  return (expo ** gen2)
+
+#-------------------------------------------------------------------------------
 
 proc testRandom*() =
   for i in 1..20:

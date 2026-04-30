@@ -29,7 +29,7 @@ const pt2_yu  = fromHex(Fp[BN254_Snarks], "0x04f21f9d99cc25f694cf22ff70dc0ac4692
 const pt2_x   = mkFp2( pt2_x1, pt2_xu )
 const pt2_y   = mkFp2( pt2_y1, pt2_yu )
 
-suite "curves":
+suite "curve and subgroup checks":
 
   test "gen1 is on the curve":
     check checkCurveEqG1(gen1.x,gen1.y) 
